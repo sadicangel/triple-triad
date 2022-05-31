@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TripleTriad (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "TripleTriad (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
