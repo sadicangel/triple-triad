@@ -1,13 +1,16 @@
 ﻿<UserControl
-    x:Class="TripleTriad.Views.CellView"
+    x:Class="TripleTriad.Controls.CellControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:TripleTriad.Views"
+    xmlns:local="using:TripleTriad.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:explicit="using:TripleTriad.ViewModels.Explicit"
     mc:Ignorable="d">
-    <Grid x:Name="GridRoot" x:FieldModifier="private" d:DataContext="{d:DesignInstance explicit:CellViewModel}">
+    <Grid
+        x:Name="GridRoot"
+        x:FieldModifier="private"
+        d:DataContext="{d:DesignInstance explicit:CellViewModel}">
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="CellStates">
                 <VisualState
@@ -42,9 +45,11 @@
             Background="{StaticResource IMECandidateSelectedForegroundThemeBrush}"
             Opacity="0.1"
             BorderThickness="0" />
-        <local:CardView
+        <Grid DataContext="{Binding Card}">
+        <local:CardControl
             x:Name="Card"
             x:FieldModifier="private"
-            Card="{Binding Card, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            Card="{Binding}" />
+        </Grid>
     </Grid>
 </UserControl>

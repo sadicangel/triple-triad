@@ -1,12 +1,12 @@
 ﻿<UserControl
-    x:Class="TripleTriad.Views.CardView"
+    x:Class="TripleTriad.Controls.CardControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:TripleTriad.Views"
+    xmlns:local="using:TripleTriad.Controls"
     xmlns:converters="using:TripleTriad.Converters"
     xmlns:viewmodels="using:TripleTriad.ViewModels.Explicit"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:controls="using:TripleTriad.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     MinWidth="256" MaxWidth="256"
     MinHeight="256" MaxHeight="256"
@@ -274,15 +274,15 @@
                         Canvas.Top="26"
                         Source="{Binding Element, Converter={converters:ElementToImageSourceConverter}}" />
                 </Canvas>
-                <controls:OutlinedTextBlock
+                <local:OutlinedTextBlock
                     VerticalAlignment="Bottom"
                     HorizontalAlignment="Right"
-                    Margin="0,0,18,5"
-                    OutlineColor="Black"
-                    OutlineThickness="2"
-                    TextColor="GhostWhite"
-                    FontFamily="Pristina"
-                    FontSize="30"
+                    Margin="0,0,16,8"
+                    OutlineColor="FloralWhite"
+                    OutlineThickness="4"
+                    TextColor="Black"
+                    FontFamily="Arial"
+                    FontSize="20"
                     Text="{Binding Name}" />
             </Grid>
         </Grid>

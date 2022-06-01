@@ -1,11 +1,12 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using TripleTriad.Services;
 using TripleTriad.ViewModels;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using Windows.UI.ViewManagement;
 
 namespace TripleTriad;
 /// <summary>
@@ -16,6 +17,9 @@ public partial class App : Application
     private readonly IHost _host;
     private readonly CancellationTokenSource _cancellationTokenSource;
     private Window? _window;
+
+    // Until we can properly inhect services in pages..
+    public static T GetService<T>() where T : notnull => ((App)Current)._host.Services.GetRequiredService<T>();
 
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -39,7 +43,12 @@ public partial class App : Application
     private void ConfigureServices(HostBuilderContext hostContext, IServiceCollection services)
     {
         services.AddCardRepository();
+        services.AddSingleton<INavigationService, NavigationService>();
+        // ViewModels
         services.AddSingleton<MainViewModel>();
+        services.AddSingleton<AlbumViewModel>();
+        services.AddScoped<BoardViewModel>(s => s.GetRequiredService<MainViewModel>().Board);
+        // Windows
         services.AddSingleton<MainWindow>();
     }
 

@@ -8,22 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <StackPanel
-        Orientation="Horizontal"
-        DataContext="{x:Bind ViewModel}"
-        HorizontalAlignment="Center">
-        <!--<ListView
-            x:Name="cardList"
-            ItemsSource="{Binding Cards}">
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding Name}" />
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>-->
-        <!--<views:CardView
-            Card="{Binding SelectedValue, ElementName=cardList}" />-->
-        <views:BoardView Board="{Binding Board}"
-            />
-    </StackPanel>
+    <Grid>
+        <Frame x:Name="RootFrame" />
+    </Grid>
 </Window>

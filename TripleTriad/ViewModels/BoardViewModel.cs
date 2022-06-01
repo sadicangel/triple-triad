@@ -1,8 +1,9 @@
 ﻿using Microsoft.UI;
 using System.Collections.ObjectModel;
 using TripleTriad.Models;
+using TripleTriad.ViewModels.Explicit;
 
-namespace TripleTriad.ViewModels.Explicit;
+namespace TripleTriad.ViewModels;
 
 public sealed class BoardViewModel : BaseViewModel
 {
@@ -37,7 +38,7 @@ public sealed class BoardViewModel : BaseViewModel
         Column = i % 3,
     }).ToList();
 
-    private void OnIsLeftActiveChanged(bool obj)
+    private void OnIsLeftActiveChanged(bool isLeftActive)
     {
         NotifyPropertyChanged(nameof(IsRightActive));
         NotifyPropertyChanged(nameof(ActivePlayer));

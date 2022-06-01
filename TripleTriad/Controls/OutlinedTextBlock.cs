@@ -25,13 +25,13 @@ public sealed class OutlinedTextBlock : UserControl
     [Category(_category)]
     public Color TextColor { get => (Color)GetValue(TextColorProperty); set => SetValue(TextColorProperty, value); }
     public static readonly DependencyProperty TextColorProperty =
-        DependencyProperty.Register(nameof(TextColor), typeof(Color), typeof(OutlinedTextBlock), new PropertyMetadata(Colors.Black, OnPropertyChanged));
+        DependencyProperty.Register(nameof(TextColor), typeof(Color), typeof(OutlinedTextBlock), new PropertyMetadata(Colors.White, OnPropertyChanged));
 
     [Category(_category)]
     public Color OutlineColor { get => (Color)GetValue(OutlineColorProperty); set => SetValue(OutlineColorProperty, value); }
 
     public static readonly DependencyProperty OutlineColorProperty =
-        DependencyProperty.Register(nameof(OutlineColor), typeof(Color), typeof(OutlinedTextBlock), new PropertyMetadata(Colors.Orange, OnPropertyChanged));
+        DependencyProperty.Register(nameof(OutlineColor), typeof(Color), typeof(OutlinedTextBlock), new PropertyMetadata(Colors.Black, OnPropertyChanged));
 
     [Category(_category)]
     public CanvasWordWrapping TextWrapping { get => (CanvasWordWrapping)GetValue(TextWrappingProperty); set => SetValue(TextWrappingProperty, value); }
@@ -58,6 +58,7 @@ public sealed class OutlinedTextBlock : UserControl
     {
         Loaded += OutlinedTextBlock_Loaded;
         Unloaded += OutlinedTextBlock_Unloaded;
+        
     }
 
     private void OutlinedTextBlock_Loaded(object sender, RoutedEventArgs e)
@@ -109,6 +110,7 @@ public sealed class OutlinedTextBlock : UserControl
             args.DrawingSession.DrawGeometry(geometry, offset, offset, OutlineColor, (float)OutlineThickness, dashedStroke);
         }
         args.DrawingSession.DrawTextLayout(textLayout, offset, offset, TextColor);
+        InvalidateMeasure();
     }
 
 

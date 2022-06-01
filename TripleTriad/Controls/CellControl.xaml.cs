@@ -1,29 +1,31 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System.Diagnostics;
 using TripleTriad.Models;
 using TripleTriad.ViewModels.Explicit;
-namespace TripleTriad.Views;
 
-public sealed partial class CellView : UserControl
+namespace TripleTriad.Controls;
+
+public sealed partial class CellControl : UserControl
 {
     public CellViewModel Cell { get => (CellViewModel)GetValue(CellProperty); set => SetValue(CellProperty, value); }
     public static readonly DependencyProperty CellProperty =
-        DependencyProperty.Register(nameof(Cell), typeof(CellViewModel), typeof(CellView), new PropertyMetadata(null, OnCellChanged));
+        DependencyProperty.Register(nameof(Cell), typeof(CellViewModel), typeof(CellControl), new PropertyMetadata(null, OnCellChanged));
 
-    public CellView()
+    public CellControl()
     {
         InitializeComponent();
     }
 
     private static void OnCellChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is CellView cellView)
+        if (d is CellControl cellControl)
         {
             if(e.OldValue is CellViewModel old)
-                old.FlipRequested -= cellView.FlipRequested;
+                old.FlipRequested -= cellControl.FlipRequested;
             var viewModel = (CellViewModel)e.NewValue;
-            cellView.GridRoot.DataContext = viewModel;
-            viewModel.FlipRequested += cellView.FlipRequested;
+            cellControl.GridRoot.DataContext = viewModel;
+            viewModel.FlipRequested += cellControl.FlipRequested;
         }
     }
 

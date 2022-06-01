@@ -1,41 +1,35 @@
-﻿using Microsoft.UI.Xaml;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
+using TripleTriad.Controls;
 using TripleTriad.Models;
+using TripleTriad.ViewModels;
 using TripleTriad.ViewModels.Explicit;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics.Imaging;
 
-namespace TripleTriad.Views;
+namespace TripleTriad.Pages;
 
-public sealed partial class BoardView : UserControl
+public sealed partial class BoardPage : Page
 {
-    public BoardViewModel Board { get => (BoardViewModel)GetValue(BoardProperty); set => SetValue(BoardProperty, value); }
-    public static readonly DependencyProperty BoardProperty =
-        DependencyProperty.Register(nameof(Board), typeof(BoardViewModel), typeof(BoardView), new PropertyMetadata(null, OnBoardChanged));
+    private BoardViewModel ViewModel { get; }
+    private MoveViewModel? _activeMove;
 
-    private MoveViewModel? activeMove;
-
-    public BoardView()
+    public BoardPage()
     {
         InitializeComponent();
-        RootGrid.DataContext = null;
-    }
-
-    private static void OnBoardChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if(d is BoardView boardView)
-            boardView.RootGrid.DataContext = (BoardViewModel)e.NewValue;
+        DataContext = ViewModel = App.GetService<BoardViewModel>();
     }
 
     private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        VisualStateManager.GoToState((CardView)sender, "Selected", useTransitions: false);
+        VisualStateManager.GoToState((CardControl)sender, "Selected", useTransitions: false);
     }
 
     private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        VisualStateManager.GoToState((CardView)sender, "Normal", useTransitions: false);
+        VisualStateManager.GoToState((CardControl)sender, "Normal", useTransitions: false);
     }
 
     private async void OnDragStarting(UIElement sender, DragStartingEventArgs args)
@@ -54,38 +48,38 @@ public sealed partial class BoardView : UserControl
             BitmapAlphaMode.Premultiplied);
         args.DragUI.SetContentFromSoftwareBitmap(bitmap);
         deferral.Complete();
-        activeMove = new MoveViewModel(Board.ActivePlayer, ((CardView)sender).Card);
+        _activeMove = new MoveViewModel(ViewModel.ActivePlayer, ((CardControl)sender).Card);
     }
 
     private void OnDropCompleted(UIElement sender, DropCompletedEventArgs args)
     {
-        var cardView = (CardView)sender;
+        var cardView = (CardControl)sender;
         if (args.DropResult == DataPackageOperation.Move)
         {
             // Update indices of cards comming after.
-            for (int i = cardView.Card.HandIndex + 1; i < Board.ActiveHand.Count; ++i)
-                Board.ActiveHand[i].HandIndex--;
-            Board.ActiveHand.RemoveAt(cardView.Card.HandIndex);
-            Board.IsLeftActive = !Board.IsLeftActive;
+            for (int i = cardView.Card.HandIndex + 1; i < ViewModel.ActiveHand.Count; ++i)
+                ViewModel.ActiveHand[i].HandIndex--;
+            ViewModel.ActiveHand.RemoveAt(cardView.Card.HandIndex);
+            ViewModel.IsLeftActive = !ViewModel.IsLeftActive;
         }
         else
         {
             cardView.Opacity = 1;
         }
-        activeMove = null;
+        _activeMove = null;
     }
 
     private void OnDrop(object sender, DragEventArgs e)
     {
-        var hasCard = activeMove is not null;
+        var hasCard = _activeMove is not null;
         e.AcceptedOperation = hasCard ? DataPackageOperation.Move : DataPackageOperation.None;
         if (hasCard)
         {
-            var move = activeMove!;
-            var cell = ((CellView)sender).Cell;
+            var move = _activeMove!;
+            var cell = ((CellControl)sender).Cell;
             cell.Card = move.Card;
             cell.Player = move.Player;
-            var neighbours = Board.GetCellNeighbours(cell);
+            var neighbours = ViewModel.GetCellNeighbours(cell);
             if (cell.BeatsOther(neighbours.Left, Direction.Left))
             {
                 neighbours.Left.FlipCard(Direction.Left);
@@ -109,11 +103,9 @@ public sealed partial class BoardView : UserControl
         }
     }
 
-
-
     private void OnDragEnter(object sender, DragEventArgs e)
     {
-        var cellView = (CellView)sender;
+        var cellView = (CellControl)sender;
         if (cellView.Cell.Card is null)
         {
             VisualStateManager.GoToState(cellView, "Selected", useTransitions: false);
@@ -127,6 +119,6 @@ public sealed partial class BoardView : UserControl
 
     private void OnDragLeave(object sender, DragEventArgs e)
     {
-        VisualStateManager.GoToState((CellView)sender, "Normal", useTransitions: false);
+        VisualStateManager.GoToState((CellControl)sender, "Normal", useTransitions: false);
     }
 }

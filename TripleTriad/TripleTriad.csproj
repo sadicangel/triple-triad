@@ -19,9 +19,10 @@
     <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
   </PropertyGroup>
   <ItemGroup>
-    <None Remove="Views\BoardView.xaml" />
-    <None Remove="Views\CardView.xaml" />
-    <None Remove="Views\CellView.xaml" />
+    <None Remove="Controls\CardControl.xaml" />
+    <None Remove="Controls\CellControl.xaml" />
+    <None Remove="Pages\AlbumPage.xaml" />
+    <None Remove="Pages\BoardPage.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -53,17 +54,22 @@
     <ProjectReference Include="..\TripleTriad.Shared\TripleTriad.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\CellView.xaml">
+    <Page Update="Pages\AlbumPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BoardView.xaml">
-      <Generator>MSBuild:Compile</Generator>
+    <Page Update="Controls\CardControl.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Controls\CellControl.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\CardView.xaml">
+    <Page Update="Pages\BoardPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
