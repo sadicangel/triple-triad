@@ -13,7 +13,7 @@ public class NavigationService : INavigationService
     public void InitializeFrame(Frame rootFrame)
     {
         _shellFrame = rootFrame;
-        NavigateTo<AlbumViewModel>();
+        NavigateTo<MainViewModel>();
     }
 
     public void NavigateTo<T>() where T : BaseViewModel

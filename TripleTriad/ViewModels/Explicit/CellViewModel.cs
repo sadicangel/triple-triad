@@ -1,50 +1,41 @@
 ﻿using Microsoft.UI;
 using System.Diagnostics.CodeAnalysis;
+using TripleTriad.Controls;
 using TripleTriad.Models;
 
 namespace TripleTriad.ViewModels.Explicit;
 
-public sealed class CellViewModel : BaseViewModel
+public sealed class CellViewModel : BaseViewModel<Cell, CellControl>
 {
-    public int Row { get; init; }
-    public int Column { get; init; }
-    public PlayerViewModel? Player { get => _player; set => SetProperty(ref _player, value).Then(OnPlayerChanged); }
+    public int Index { get; init; }
+    public int Row { get => Index / 3; }
+    public int Column { get => Index % 3; }
+    public PlayerViewModel? Player { get => _player; set => SetProperty(ref _player, value, OnPlayerChanged); }
     private PlayerViewModel? _player;
-    public CardViewModel? Card { get => _card; set => SetProperty(ref _card, value); }
+    public CardViewModel? Card { get => _card; set => SetProperty(ref _card, value, OnCardChanged); }
     private CardViewModel? _card;
 
-    public event EventHandler<Direction>? FlipRequested;
+    public CellViewModel() => Model = new Cell();
+
+    public Element Element { get => _element; set => SetProperty(ref _element, value); }
+    private Element _element;
+
+    public bool HasCard { get => _card is not null; }
 
     private void OnPlayerChanged(PlayerViewModel? player)
     {
-        if (Card is not null)
-            Card.Color = player?.Color ?? Colors.GhostWhite;
+        Model.Player = player?.Model;
     }
 
-    public bool BeatsOther([NotNullWhen(true)] CellViewModel? other, Direction direction)
+    private void OnCardChanged(CardViewModel? card)
     {
-        if (other is null || other.Card is null || Card is null || other.Player?.Color == Player?.Color)
-            return false;
-
-        var thisCard = Card;
-        var otherCard = other.Card;
-        switch (direction)
-        {
-            case Direction.Left:
-                return thisCard.Left > otherCard.Right;
-            case Direction.Up:
-                return thisCard.Up > otherCard.Down;
-            case Direction.Right:
-                return thisCard.Right > otherCard.Left;
-            case Direction.Down:
-                return thisCard.Down > otherCard.Up;
-            default:
-                throw new InvalidOperationException();
-        }
+        Model.Card = card?.Model;
+        OnPropertyChanged(nameof(HasCard));
     }
 
-    public void FlipCard(Direction direction)
+    public void Empty()
     {
-        FlipRequested?.Invoke(this, direction);
+        Player = null;
+        Card = null;
     }
 }

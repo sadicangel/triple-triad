@@ -46,8 +46,9 @@ public partial class App : Application
         services.AddSingleton<INavigationService, NavigationService>();
         // ViewModels
         services.AddSingleton<MainViewModel>();
+        services.AddSingleton<LobbyViewModel>();
+        services.AddSingleton<BoardViewModel>();
         services.AddSingleton<AlbumViewModel>();
-        services.AddScoped<BoardViewModel>(s => s.GetRequiredService<MainViewModel>().Board);
         // Windows
         services.AddSingleton<MainWindow>();
     }

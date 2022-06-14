@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System.Diagnostics;
 using TripleTriad.Controls;
 using TripleTriad.Models;
 using TripleTriad.ViewModels;
@@ -13,23 +13,27 @@ namespace TripleTriad.Pages;
 
 public sealed partial class BoardPage : Page
 {
-    private BoardViewModel ViewModel { get; }
+    private TaskCompletionSource? _ruleTaskSource;
+    private IEnumerable<DirectedCell>? _ruleCells;
     private MoveViewModel? _activeMove;
+
+    private BoardViewModel ViewModel { get; }
 
     public BoardPage()
     {
         InitializeComponent();
         DataContext = ViewModel = App.GetService<BoardViewModel>();
+        ViewModel.View = this;
     }
 
     private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        VisualStateManager.GoToState((CardControl)sender, "Selected", useTransitions: false);
+        ((CardControl)sender).IsSelected = true;
     }
 
     private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        VisualStateManager.GoToState((CardControl)sender, "Normal", useTransitions: false);
+        ((CardControl)sender).IsSelected = false;
     }
 
     private async void OnDragStarting(UIElement sender, DragStartingEventArgs args)
@@ -53,23 +57,11 @@ public sealed partial class BoardPage : Page
 
     private void OnDropCompleted(UIElement sender, DropCompletedEventArgs args)
     {
-        var cardView = (CardControl)sender;
-        if (args.DropResult == DataPackageOperation.Move)
-        {
-            // Update indices of cards comming after.
-            for (int i = cardView.Card.HandIndex + 1; i < ViewModel.ActiveHand.Count; ++i)
-                ViewModel.ActiveHand[i].HandIndex--;
-            ViewModel.ActiveHand.RemoveAt(cardView.Card.HandIndex);
-            ViewModel.IsLeftActive = !ViewModel.IsLeftActive;
-        }
-        else
-        {
-            cardView.Opacity = 1;
-        }
+        sender.Opacity = 1;
         _activeMove = null;
     }
 
-    private void OnDrop(object sender, DragEventArgs e)
+    private async void OnDrop(object sender, DragEventArgs e)
     {
         var hasCard = _activeMove is not null;
         e.AcceptedOperation = hasCard ? DataPackageOperation.Move : DataPackageOperation.None;
@@ -77,28 +69,37 @@ public sealed partial class BoardPage : Page
         {
             var move = _activeMove!;
             var cell = ((CellControl)sender).Cell;
-            cell.Card = move.Card;
-            cell.Player = move.Player;
-            var neighbours = ViewModel.GetCellNeighbours(cell);
-            if (cell.BeatsOther(neighbours.Left, Direction.Left))
+            move.CellIndex = cell.Index;
+            await ViewModel.ExecuteMove(cell, move);
+            if (!ViewModel.IsGameOver)
             {
-                neighbours.Left.FlipCard(Direction.Left);
-                neighbours.Left.Player = cell.Player;
+                ViewModel.IsLeftActive = !ViewModel.IsLeftActive;
             }
-            if (cell.BeatsOther(neighbours.Up, Direction.Up))
+            else
             {
-                neighbours.Up.FlipCard(Direction.Up);
-                neighbours.Up.Player = cell.Player;
-            }
-            if (cell.BeatsOther(neighbours.Right, Direction.Right))
-            {
-                neighbours.Right.FlipCard(Direction.Right);
-                neighbours.Right.Player = cell.Player;
-            }
-            if (cell.BeatsOther(neighbours.Down, Direction.Down))
-            {
-                neighbours.Down.FlipCard(Direction.Down);
-                neighbours.Down.Player = cell.Player;
+                Debug.WriteLine("{0} wins", ViewModel.Winner.Name);
+                var restartDialog = new ContentDialog
+                {
+                    XamlRoot = XamlRoot,
+                    Title = "Game Over",
+                    Content = $"Player {ViewModel.Winner.Name} wins! Restart board?",
+                    PrimaryButtonText = "Restart",
+                    CloseButtonText = "Exit"
+                };
+
+                var result = await restartDialog.ShowAsync();
+
+                // Delete the file if the user clicked the primary button.
+                /// Otherwise, do nothing.
+                if (result == ContentDialogResult.Primary)
+                {
+                    ViewModel.ResetBoard();
+                }
+                else
+                {
+                    // The user clicked the CLoseButton, pressed ESC, Gamepad B, or the system back button.
+                    Application.Current.Exit();
+                }
             }
         }
     }
@@ -120,5 +121,28 @@ public sealed partial class BoardPage : Page
     private void OnDragLeave(object sender, DragEventArgs e)
     {
         VisualStateManager.GoToState((CellControl)sender, "Normal", useTransitions: false);
+    }
+
+    public async Task ShowRuleAsync(BoardRules rule, IEnumerable<DirectedCell> cells)
+    {
+        _ruleTaskSource = new TaskCompletionSource();
+        _ruleCells = cells;
+        foreach (var (_, cell) in _ruleCells)
+            cell.Card!.Hightlight(rule);
+        VisualStateManager.GoToState(this, $"Rule{rule}", useTransitions: true);
+        await _ruleTaskSource.Task;
+    }
+
+    private void ShowRule_Completed(object? sender, object e)
+    {
+        if (_ruleCells is not null)
+        {
+            foreach (var (_, cell) in _ruleCells)
+                cell.Card!.RemoveVisualStates();
+        }
+        VisualStateManager.GoToState(this, "Normal", useTransitions: true);
+        _ruleTaskSource?.SetResult();
+        _ruleTaskSource = null;
+        _ruleCells = null;
     }
 }

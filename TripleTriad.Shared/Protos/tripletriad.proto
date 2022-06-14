@@ -1,0 +1,28 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "TripleTriad.Services";
+
+package tripletriad;
+
+import "google/protobuf/empty.proto";
+import "player.proto";
+import "subscription.proto";
+import "message.proto";
+import "message_selector.proto";
+
+service TripleTriadService {
+  rpc Handshake (HandshakeRequest) returns (HandshakeResponse);
+  rpc Subscribe (Subscription) returns (stream Message);
+  rpc Unsubscribe (Subscription) returns (google.protobuf.Empty);
+  rpc Receive (MessageSelector) returns (Message);
+  rpc Send (Message) returns (google.protobuf.Empty);
+}
+
+message HandshakeRequest {
+  Player client_player = 1;
+}
+
+message HandshakeResponse {
+  Player server_player = 1;
+  Subscription subscription = 2;
+}

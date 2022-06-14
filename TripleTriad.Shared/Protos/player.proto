@@ -1,0 +1,9 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "TripleTriad.Models";
+
+package tripletriad;
+
+message Player {
+  string name = 1;
+}

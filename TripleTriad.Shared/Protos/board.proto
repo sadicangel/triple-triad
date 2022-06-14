@@ -1,0 +1,22 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "TripleTriad.Models";
+
+package tripletriad;
+
+import "ruleset.proto";
+import "player.proto";
+import "card.proto";
+import "cell.proto";
+
+message Board {
+  bool is_left_active = 1;
+  Ruleset ruleset = 2;
+  Player left_player = 3;
+  Player right_player = 4;
+  repeated Card left_hand = 5;
+  repeated Card right_hand = 6;
+  repeated Cell cells = 7;
+  bool is_game_over = 8;
+  optional Player winner = 9;
+}

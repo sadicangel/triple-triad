@@ -23,6 +23,8 @@
     <None Remove="Controls\CellControl.xaml" />
     <None Remove="Pages\AlbumPage.xaml" />
     <None Remove="Pages\BoardPage.xaml" />
+    <None Remove="Pages\LobbyPage.xaml" />
+    <None Remove="Pages\MainPage.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="7.1.2" />
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1" />
@@ -52,6 +55,16 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TripleTriad.Shared\TripleTriad.Shared.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Pages\LobbyPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Pages\MainPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Pages\AlbumPage.xaml">

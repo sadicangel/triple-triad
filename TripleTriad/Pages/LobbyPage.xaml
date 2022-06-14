@@ -1,0 +1,169 @@
+﻿<Page
+    x:Class="TripleTriad.Pages.LobbyPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:TripleTriad.Pages"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewmodels="using:TripleTriad.ViewModels"
+    xmlns:models="using:TripleTriad.Models"
+    xmlns:converters="using:TripleTriad.Converters"
+    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    d:DataContext="{d:DesignInstance viewmodels:LobbyViewModel}">
+    <Grid
+        x:Name="RootPanel"
+        x:FieldModifier="private">
+        <Grid.Resources>
+            <Style TargetType="TextBlock">
+                <Setter Property="FontSize" Value="24" />
+            </Style>
+            <Style TargetType="StackPanel">
+                <Setter Property="Margin" Value="5" />
+            </Style>
+        </Grid.Resources>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition />
+            <RowDefinition />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <StackPanel
+            Grid.Row="0"
+            Grid.Column="0">
+            <TextBlock
+                Text="Match Rules" />
+            <StackPanel
+                Orientation="Horizontal">
+                <CheckBox
+                    Content="{x:Bind models:MatchRules.Open}"
+                    IsChecked="{Binding Ruleset.MatchRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=Open}"
+                    Command="{Binding MatchRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}"/>
+                <CheckBox
+                    Content="{x:Bind models:MatchRules.Random}"
+                    IsChecked="{Binding Ruleset.MatchRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=Random}"
+                    Command="{Binding MatchRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}"/>
+                <CheckBox
+                    Content="{x:Bind models:MatchRules.SuddenDeath}"
+                    IsChecked="{Binding Ruleset.MatchRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=SuddenDeath}"
+                    Command="{Binding MatchRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}"/>
+            </StackPanel>
+        </StackPanel>
+        <StackPanel
+            Grid.Row="1"
+            Grid.Column="0">
+            <TextBlock
+                Text="Board Rules"/>
+            <StackPanel
+                Orientation="Horizontal">
+                <CheckBox
+                    Content="{x:Bind models:BoardRules.Same}"
+                    IsChecked="{Binding Ruleset.BoardRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=Same}"
+                    Command="{Binding BoardRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+                <CheckBox
+                    Content="{x:Bind models:BoardRules.SameWall}"
+                    IsChecked="{Binding Ruleset.BoardRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=SameWall}"
+                    Command="{Binding BoardRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+                <CheckBox
+                    Content="{x:Bind models:BoardRules.Plus}"
+                    IsChecked="{Binding Ruleset.BoardRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=Plus}"
+                    Command="{Binding BoardRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+                <CheckBox
+                    Content="{x:Bind models:BoardRules.Combo}"
+                    IsChecked="{Binding Ruleset.BoardRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=Combo}"
+                    Command="{Binding BoardRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+                <CheckBox
+                    Content="{x:Bind models:BoardRules.Elemental}"
+                    IsChecked="{Binding Ruleset.BoardRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=Elemental}"
+                    Command="{Binding BoardRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+            </StackPanel>
+        </StackPanel>
+        <StackPanel
+            Grid.Row="2"
+            Grid.Column="0">
+            <TextBlock
+                Text="Trade Rules" />
+            <StackPanel
+                Orientation="Horizontal">
+                <RadioButton
+                    GroupName="TradeRules"
+                    Content="{x:Bind models:TradeRules.One}"
+                    IsChecked="{Binding Ruleset.TradeRules, Converter={converters:EnumEqualsConverter}, ConverterParameter=One}"
+                    Command="{Binding TradeRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+                <RadioButton
+                    GroupName="TradeRules"
+                    Content="{x:Bind models:TradeRules.Diff}"
+                    IsChecked="{Binding Ruleset.TradeRules, Converter={converters:EnumEqualsConverter}, ConverterParameter=Diff}"
+                    Command="{Binding TradeRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+                <RadioButton
+                    GroupName="TradeRules"
+                    Content="{x:Bind models:TradeRules.Direct}"
+                    IsChecked="{Binding Ruleset.TradeRules, Converter={converters:EnumEqualsConverter}, ConverterParameter=Direct}"
+                    Command="{Binding TradeRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+                <RadioButton
+                    GroupName="TradeRules"
+                    Content="{x:Bind models:TradeRules.All}"
+                    IsChecked="{Binding Ruleset.TradeRules, Converter={converters:EnumEqualsConverter}, ConverterParameter=All}"
+                    Command="{Binding TradeRuleCheckedCommand}"
+                    CommandParameter="{Binding Content, RelativeSource={RelativeSource Self}}" />
+            </StackPanel>
+        </StackPanel>
+        <StackPanel
+            Grid.RowSpan="3"
+            Grid.Column="1">
+            <ListView
+                x:Name="ChatTextBlock"
+                x:FieldModifier="internal"
+                ItemsSource="{Binding Chat}"
+                BorderThickness="1"
+                Height="400"
+                Width="600"
+                BorderBrush="{StaticResource ApplicationForegroundThemeBrush}">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="MinHeight" Value="0" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+            </ListView>
+            <controls:DockPanel
+                Margin="0,5,0,0">
+                <Button
+                    controls:DockPanel.Dock="Right"
+                    Width="60"
+                    Margin="5,0,0,0"
+                    Content="↵"
+                    Command="{Binding SendMessageCommand}"
+                    CommandParameter="{Binding Text, ElementName=MessageTextBox}" />
+                <TextBox
+                    x:Name="MessageTextBox"
+                    x:FieldModifier="internal"
+                    MinWidth="360"/>
+            </controls:DockPanel>
+        </StackPanel>
+        <StackPanel
+            Grid.Row="4"
+            Grid.ColumnSpan="2">
+            <Button
+                HorizontalAlignment="Right"
+                Width="200"
+                Content="Start" />
+        </StackPanel>
+    </Grid>
+</Page>

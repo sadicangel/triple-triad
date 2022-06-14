@@ -21,16 +21,9 @@ public sealed partial class CellControl : UserControl
     {
         if (d is CellControl cellControl)
         {
-            if(e.OldValue is CellViewModel old)
-                old.FlipRequested -= cellControl.FlipRequested;
             var viewModel = (CellViewModel)e.NewValue;
             cellControl.GridRoot.DataContext = viewModel;
-            viewModel.FlipRequested += cellControl.FlipRequested;
+            viewModel.View = cellControl;
         }
-    }
-
-    private void FlipRequested(object? sender, Direction direction)
-    {
-        VisualStateManager.GoToState(Card, $"Flip{direction}", useTransitions: false);
     }
 }

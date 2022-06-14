@@ -1,0 +1,100 @@
+﻿<Page
+    x:Class="TripleTriad.Pages.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:TripleTriad.Pages"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:viewmodels="using:TripleTriad.ViewModels"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    d:DataContext="{d:DesignInstance viewmodels:MainViewModel}">
+    <controls:DockPanel x:Name="RootPanel" x:FieldModifier="private">
+        <TabView
+            controls:DockPanel.Dock="Bottom"
+            HorizontalAlignment="Center"
+            IsAddTabButtonVisible="False">
+            <TabView.Resources>
+                <Style TargetType="controls:HeaderedContentControl">
+                    <Setter Property="Margin" Value="3" />
+                </Style>
+                <Style TargetType="Button">
+                    <Setter Property="Margin" Value="3" />
+                </Style>
+            </TabView.Resources>
+            <TabViewItem
+                Header="Host">
+                <Grid
+                    Margin="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <controls:HeaderedContentControl
+                        Grid.Column="0"
+                        Header="Player Name"
+                        HorizontalContentAlignment="Stretch">
+                        <TextBox
+                            HorizontalAlignment="Stretch"
+                            Text="{Binding Player.Name}" />
+                    </controls:HeaderedContentControl>
+                    <controls:HeaderedContentControl
+                        Grid.Column="1"
+                        Header="Port"
+                        HorizontalContentAlignment="Stretch">
+                        <TextBox
+                            x:Name="PortTextBox"
+                            x:FieldModifier="private"
+                            Text="50051"/>
+                    </controls:HeaderedContentControl>
+                    <Button
+                        Grid.Column="2"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Bottom"
+                        Content="Host"
+                        Command="{Binding HostCommand}"
+                        CommandParameter="{Binding Text, ElementName=PortTextBox}"/>
+                </Grid>
+            </TabViewItem>
+            <TabViewItem
+                Header="Join">
+                <Grid
+                    Margin="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <controls:HeaderedContentControl
+                        Grid.Column="0"
+                        Header="Player Name"
+                        HorizontalContentAlignment="Stretch">
+                        <TextBox
+                            HorizontalAlignment="Stretch"
+                            Text="{Binding Player.Name}" />
+                    </controls:HeaderedContentControl>
+                    <controls:HeaderedContentControl
+                        Grid.Column="1"
+                        Header="Address"
+                        HorizontalContentAlignment="Stretch">
+                        <TextBox
+                            x:Name="AddressTextBox"
+                            x:FieldModifier="private"
+                            Text="http://localhost:50051" />
+                    </controls:HeaderedContentControl>
+                    <Button
+                        Grid.Column="2"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Bottom"
+                        Content="Join"
+                        Command="{Binding JoinCommand}"
+                        CommandParameter="{Binding Text, ElementName=AddressTextBox}"/>
+                </Grid>
+            </TabViewItem>
+        </TabView>
+        <Image
+            Source="ms-appx://TripleTriad.Shared/Assets/GameLogo.png" />
+    </controls:DockPanel>
+</Page>

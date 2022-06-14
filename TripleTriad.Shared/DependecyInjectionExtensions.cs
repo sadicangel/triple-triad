@@ -8,7 +8,7 @@ namespace TripleTriad;
 
 public sealed class LiteDbOptions
 {
-    public ConnectionString ConnectionString { get; set; } = new ConnectionString();
+    public ConnectionString ConnectionString { get; set; } = new ConnectionString { Connection = ConnectionType.Shared };
     public BsonMapper BsonMapper { get; set; } = BsonMapper.Global;
 }
 

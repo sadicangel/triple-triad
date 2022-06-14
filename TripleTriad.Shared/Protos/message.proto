@@ -1,0 +1,21 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "TripleTriad.Models";
+
+package tripletriad;
+
+import "player.proto";
+import "ruleset.proto";
+import "board.proto";
+import "move.proto";
+
+message Message {
+  Player player = 1;
+  oneof content {
+    string text = 2;
+    bool ready = 3;
+    Ruleset ruleset = 4;
+    Board board = 5;
+    Move move = 6;
+  }
+}

@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid>
+    <Viewbox HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <Frame x:Name="RootFrame" />
-    </Grid>
+    </Viewbox>
 </Window>

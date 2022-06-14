@@ -1,0 +1,11 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "TripleTriad.Models";
+
+package tripletriad;
+
+message Ruleset {
+  int32 match_rules_int32 = 1;
+  int32 board_rules_int32 = 2;
+  int32 trade_rules_int32 = 3;
+}
