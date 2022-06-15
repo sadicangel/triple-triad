@@ -9,6 +9,7 @@
     xmlns:models="using:TripleTriad.Models"
     xmlns:converters="using:TripleTriad.Converters"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:w3c="using:AssyntSoftware.WinUI3Controls" xmlns:sys="using:System"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     d:DataContext="{d:DesignInstance viewmodels:LobbyViewModel}">
@@ -22,6 +23,7 @@
             <Style TargetType="StackPanel">
                 <Setter Property="Margin" Value="5" />
             </Style>
+            <TextAlignment x:Key="TextCenterAligmnent">Left</TextAlignment>
         </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition />
@@ -127,6 +129,8 @@
         <StackPanel
             Grid.RowSpan="3"
             Grid.Column="1">
+            <StackPanel.Resources>
+            </StackPanel.Resources>
             <ListView
                 x:Name="ChatTextBlock"
                 x:FieldModifier="internal"
@@ -137,10 +141,38 @@
                 BorderBrush="{StaticResource ApplicationForegroundThemeBrush}">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
-                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="Margin" Value="1" />
                         <Setter Property="MinHeight" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     </Style>
                 </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Border
+                                HorizontalAlignment="{Binding Player, Converter={converters:PlayerToHorizontalAligmentConverter}}"
+                                Background="{Binding Player.Color, Converter={converters:ArgbToBrushConverter}}"
+                                BorderBrush="Black"
+                                Opacity="0.3"
+                                CornerRadius="5">
+                            <TextBlock
+                                FontSize="14"
+                                Margin="5,0,5,0"
+                                Opacity="0"
+                                VerticalAlignment="Center"
+                                TextAlignment="{Binding Player, Converter={converters:PlayerToTextAligmentConverter}, TargetNullValue={StaticResource TextCenterAligmnent}, FallbackValue={StaticResource TextCenterAligmnent}}"
+                                Text="{Binding Text}" />
+                            </Border>
+                            <TextBlock
+                                FontSize="14"
+                                Margin="5,0,5,0"
+                                Opacity="1"
+                                VerticalAlignment="Center"
+                                TextAlignment="{Binding Player, Converter={converters:PlayerToTextAligmentConverter}, TargetNullValue={StaticResource TextCenterAligmnent}, FallbackValue={StaticResource TextCenterAligmnent}}"
+                                Text="{Binding Text}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
             </ListView>
             <controls:DockPanel
                 Margin="0,5,0,0">
@@ -159,11 +191,19 @@
         </StackPanel>
         <StackPanel
             Grid.Row="4"
-            Grid.ColumnSpan="2">
+            Grid.ColumnSpan="2"
+            Orientation="Horizontal"
+            HorizontalAlignment="Right">
             <Button
                 HorizontalAlignment="Right"
                 Width="200"
-                Content="Start" />
+                Content="Ready"
+                Command="{Binding ReadyCommand}" />
+            <Button
+                HorizontalAlignment="Right"
+                Width="200"
+                Content="Start"
+                Command="{Binding StartCommand}" />
         </StackPanel>
     </Grid>
 </Page>

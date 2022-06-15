@@ -17,6 +17,6 @@ public sealed partial class MainWindow : Window
     public MainWindow(INavigationService navigation)
     {
         InitializeComponent();
-        navigation.InitializeFrame(RootFrame);
+        navigation.InitializeFrame<MainViewModel>(RootFrame);
     }
 }

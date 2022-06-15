@@ -27,32 +27,39 @@
                 Header="Host">
                 <Grid
                     Margin="1">
+                    <Grid.Resources>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontSize" Value="12" />
+                        </Style>
+                    </Grid.Resources>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <controls:HeaderedContentControl
-                        Grid.Column="0"
-                        Header="Player Name"
-                        HorizontalContentAlignment="Stretch">
+                    <StackPanel
+                        Grid.Column="0">
+                        <TextBlock
+                            Text="Player Name" />
                         <TextBox
                             HorizontalAlignment="Stretch"
-                            Text="{Binding Player.Name}" />
-                    </controls:HeaderedContentControl>
-                    <controls:HeaderedContentControl
-                        Grid.Column="1"
-                        Header="Port"
-                        HorizontalContentAlignment="Stretch">
+                            Text="{Binding Player.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel
+                        Grid.Column="1">
+                        <TextBlock
+                            Text="Port" />
                         <TextBox
                             x:Name="PortTextBox"
                             x:FieldModifier="private"
                             Text="50051"/>
-                    </controls:HeaderedContentControl>
+                    </StackPanel>
                     <Button
                         Grid.Column="2"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Bottom"
+                        Margin="5,16,0,5"
+                        CornerRadius="5"
                         Content="Host"
                         Command="{Binding HostCommand}"
                         CommandParameter="{Binding Text, ElementName=PortTextBox}"/>
@@ -67,23 +74,23 @@
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <controls:HeaderedContentControl
-                        Grid.Column="0"
-                        Header="Player Name"
-                        HorizontalContentAlignment="Stretch">
+                    <StackPanel
+                        Grid.Column="0">
+                        <TextBlock
+                            Text="Player Name" />
                         <TextBox
                             HorizontalAlignment="Stretch"
-                            Text="{Binding Player.Name}" />
-                    </controls:HeaderedContentControl>
-                    <controls:HeaderedContentControl
-                        Grid.Column="1"
-                        Header="Address"
-                        HorizontalContentAlignment="Stretch">
+                            Text="{Binding Player.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel
+                        Grid.Column="1">
+                        <TextBlock
+                            Text="Address" />
                         <TextBox
                             x:Name="AddressTextBox"
                             x:FieldModifier="private"
                             Text="http://localhost:50051" />
-                    </controls:HeaderedContentControl>
+                    </StackPanel>
                     <Button
                         Grid.Column="2"
                         HorizontalAlignment="Stretch"

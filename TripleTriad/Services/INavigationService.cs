@@ -5,8 +5,7 @@ namespace TripleTriad.Services;
 
 public interface INavigationService
 {
-    void InitializeFrame(Frame rootFrame);
+    void InitializeFrame<T>(Frame rootFrame) where T : BaseViewModel;
     void NavigateTo<T>() where T : BaseViewModel;
-    void NavigateTo<T>(object parameter) where T : BaseViewModel;
     void RemoveFromBackStack();
 }

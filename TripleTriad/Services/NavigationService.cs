@@ -10,18 +10,13 @@ public class NavigationService : INavigationService
 {
     private Frame? _shellFrame;
 
-    public void InitializeFrame(Frame rootFrame)
+    public void InitializeFrame<T>(Frame rootFrame) where T : BaseViewModel
     {
         _shellFrame = rootFrame;
-        NavigateTo<MainViewModel>();
+        NavigateTo<T>();
     }
 
     public void NavigateTo<T>() where T : BaseViewModel
-    {
-        InternalNavigateTo(typeof(T));
-    }
-
-    public void NavigateTo<T>(object? parameter) where T : BaseViewModel
     {
         InternalNavigateTo(typeof(T));
     }

@@ -1,6 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using TripleTriad.Extensions;
 using TripleTriad.Models;
 using TripleTriad.Pages;
 using TripleTriad.Services;
@@ -12,8 +15,6 @@ namespace TripleTriad.ViewModels;
 public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
 {
     private readonly ITripleTriadUser _user;
-    private readonly CancellationTokenSource _cancellationSource;
-    private readonly ManualResetEventSlim _connected;
     private readonly INavigationService _navigation;
     private RulesetViewModel _ruleset = new()
     {
@@ -24,47 +25,66 @@ public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
             TradeRules = TradeRules.One
         }
     };
+    private bool _isReady;
+    private bool _otherIsReady;
+    private bool _canStart;
 
     public RulesetViewModel Ruleset { get => _ruleset; set => SetProperty(ref _ruleset, value, OnRulesetChanged); }
 
-    public ObservableCollection<string> Chat { get; } = new();
+    public ObservableCollection<Message> Chat { get; } = new();
     
     public RelayCommand<MatchRules> MatchRuleCheckedCommand { get; }
     public RelayCommand<BoardRules> BoardRuleCheckedCommand { get; }
     public RelayCommand<TradeRules> TradeRuleCheckedCommand { get; }
     public RelayCommand<string> SendMessageCommand { get; }
     public bool CanEdit { get => _user?.IsHosting ?? true; }
+    public RelayCommand ReadyCommand { get; }
+    public bool CanStart { get => (_user?.IsHosting ?? true) && _canStart; set => SetProperty(ref _canStart, value); }
+    public RelayCommand StartCommand { get; }
 
     public LobbyViewModel(INavigationService navigation, MainViewModel main)
     {
         IsBusy = true;
-        _connected = new ManualResetEventSlim();
-        _cancellationSource = new CancellationTokenSource();
         _navigation = navigation;
-        _user = main.User;
+        _user = main.User ?? ITripleTriadServer.Create(new Player { Name = "Test", Color = Colors.DarkGreen.ToUint32(), IsLeft = true }, 50051);
         _user.MessageReceived += User_MessageReceived;
         MatchRuleCheckedCommand = new RelayCommand<MatchRules>(OnMatchRuleChecked, _ => CanEdit);
         BoardRuleCheckedCommand = new RelayCommand<BoardRules>(OnBoardRuleChecked, _ => CanEdit);
         TradeRuleCheckedCommand = new RelayCommand<TradeRules>(OnTradeRuleChecked, _ => CanEdit);
         SendMessageCommand = new RelayCommand<string>(OnSendMessage, msg => !String.IsNullOrWhiteSpace(msg));
+        ReadyCommand = new RelayCommand(OnReady);
+        StartCommand = new RelayCommand(OnStart, () => CanStart);
     }
 
-    private void User_MessageReceived(object? sender, Message e)
+    public TextAlignment GetTextAlignment(Message message)
     {
-        switch (e.ContentCase)
+        if(message.Player is not null)
+            return message.Player.IsLeft ? TextAlignment.Left : TextAlignment.Right;
+        return TextAlignment.Center;
+    }
+
+    private void User_MessageReceived(object? sender, Message message)
+    {
+        switch (message.ContentCase)
         {
             case Message.ContentOneofCase.None:
                 return;
             case Message.ContentOneofCase.Text:
-                RunOnUIThread(() => Chat.Add(e.Text));
+                RunOnUIThread(() => Chat.Add(message));
                 return;
             case Message.ContentOneofCase.Ready:
-                Console.WriteLine("{0} is ready.", e.Player.Name);
+                RunOnUIThread(() =>
+                {
+                    if(message.Ready)
+                        Chat.Add(new Message { Text = $"{message.Player.Name} is ready." });
+                    _otherIsReady = message.Ready;
+                    CanStart = _isReady && _otherIsReady;
+                });
                 return;
             case Message.ContentOneofCase.Ruleset:
                 RunOnUIThread(() =>
                 {
-                    Ruleset.Model = e.Ruleset;
+                    Ruleset.Model = message.Ruleset;
                     OnPropertyChanged(nameof(Ruleset));
                 });
                 return;
@@ -101,8 +121,21 @@ public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
         if (String.IsNullOrEmpty(message))
             return;
 
-        Chat.Add(message);
+        var msg = new Message { Player = _user.Player, Text = message };
+        Chat.Add(msg);
         View.MessageTextBox.Text = String.Empty;
-        _user.SendMessageAsync(message).ConfigureAwait(false).GetAwaiter();
+        _user.SendMessageAsync(msg).ConfigureAwait(false).GetAwaiter();
+    }
+
+    private void OnReady()
+    {
+        _isReady = !_isReady;
+        _user.SendMessageAsync(_isReady).ConfigureAwait(false).GetAwaiter();
+        CanStart = _isReady && _otherIsReady;
+    }
+
+    private void OnStart()
+    {
+        _navigation.NavigateTo<BoardViewModel>();
     }
 }

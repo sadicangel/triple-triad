@@ -6,4 +6,6 @@ package tripletriad;
 
 message Player {
   string name = 1;
+  uint32 color = 2;
+  bool is_left = 3;
 }

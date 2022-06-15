@@ -46,7 +46,7 @@ public sealed class MainViewModel : BaseViewModel<object, MainPage>
         JoinCommand = new AsyncRelayCommand<string>(JoinAsync);
         Player = new PlayerViewModel
         {
-            Model = new Player { Name = String.Empty }
+            Model = new Player { Name = "FUCKER" }
         };
     } 
 
@@ -55,6 +55,7 @@ public sealed class MainViewModel : BaseViewModel<object, MainPage>
         if (!Int32.TryParse(port, out var portValue))
             throw new InvalidOperationException("Invalid port");
         Player.Color = Colors.DarkGreen;
+        Player.IsLeft = true;
         var server = ITripleTriadServer.Create(Player.Model, portValue);
         User = server;
         User.PlayerConnected += Server_PlayerConnected;
@@ -83,6 +84,7 @@ public sealed class MainViewModel : BaseViewModel<object, MainPage>
         if (String.IsNullOrEmpty(address))
             throw new InvalidOperationException("Invalid address");
         Player.Color = Colors.DarkRed;
+        Player.IsLeft = false;
         var client = ITripleTriadClient.Create(Player.Model, address);
         User = client;
         using var tokenSource = new CancellationTokenSource();
