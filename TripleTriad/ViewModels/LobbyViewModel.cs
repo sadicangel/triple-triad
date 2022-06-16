@@ -48,19 +48,12 @@ public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
         _navigation = navigation;
         _user = main.User ?? ITripleTriadServer.Create(new Player { Name = "Test", Color = Colors.DarkGreen.ToUint32(), IsLeft = true }, 50051);
         _user.MessageReceived += User_MessageReceived;
-        MatchRuleCheckedCommand = new RelayCommand<MatchRules>(OnMatchRuleChecked, _ => CanEdit);
-        BoardRuleCheckedCommand = new RelayCommand<BoardRules>(OnBoardRuleChecked, _ => CanEdit);
-        TradeRuleCheckedCommand = new RelayCommand<TradeRules>(OnTradeRuleChecked, _ => CanEdit);
+        MatchRuleCheckedCommand = new RelayCommand<MatchRules>(OnMatchRuleChecked);
+        BoardRuleCheckedCommand = new RelayCommand<BoardRules>(OnBoardRuleChecked);
+        TradeRuleCheckedCommand = new RelayCommand<TradeRules>(OnTradeRuleChecked);
         SendMessageCommand = new RelayCommand<string>(OnSendMessage, msg => !String.IsNullOrWhiteSpace(msg));
         ReadyCommand = new RelayCommand(OnReady);
         StartCommand = new RelayCommand(OnStart, () => CanStart);
-    }
-
-    public TextAlignment GetTextAlignment(Message message)
-    {
-        if(message.Player is not null)
-            return message.Player.IsLeft ? TextAlignment.Left : TextAlignment.Right;
-        return TextAlignment.Center;
     }
 
     private void User_MessageReceived(object? sender, Message message)

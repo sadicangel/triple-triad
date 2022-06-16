@@ -9,7 +9,6 @@
     xmlns:models="using:TripleTriad.Models"
     xmlns:converters="using:TripleTriad.Converters"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:w3c="using:AssyntSoftware.WinUI3Controls" xmlns:sys="using:System"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     d:DataContext="{d:DesignInstance viewmodels:LobbyViewModel}">
@@ -41,7 +40,8 @@
             <TextBlock
                 Text="Match Rules" />
             <StackPanel
-                Orientation="Horizontal">
+                Orientation="Horizontal"
+                IsHitTestVisible="False">
                 <CheckBox
                     Content="{x:Bind models:MatchRules.Open}"
                     IsChecked="{Binding Ruleset.MatchRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=Open}"
@@ -65,7 +65,8 @@
             <TextBlock
                 Text="Board Rules"/>
             <StackPanel
-                Orientation="Horizontal">
+                Orientation="Horizontal"
+                IsHitTestVisible="{Binding CanEdit}">
                 <CheckBox
                     Content="{x:Bind models:BoardRules.Same}"
                     IsChecked="{Binding Ruleset.BoardRules, Converter={converters:EnumHasFlagConverter}, ConverterParameter=Same}"
@@ -99,7 +100,8 @@
             <TextBlock
                 Text="Trade Rules" />
             <StackPanel
-                Orientation="Horizontal">
+                Orientation="Horizontal"
+                IsHitTestVisible="False">
                 <RadioButton
                     GroupName="TradeRules"
                     Content="{x:Bind models:TradeRules.One}"
@@ -129,8 +131,6 @@
         <StackPanel
             Grid.RowSpan="3"
             Grid.Column="1">
-            <StackPanel.Resources>
-            </StackPanel.Resources>
             <ListView
                 x:Name="ChatTextBlock"
                 x:FieldModifier="internal"
@@ -169,7 +169,8 @@
                                 Opacity="1"
                                 VerticalAlignment="Center"
                                 TextAlignment="{Binding Player, Converter={converters:PlayerToTextAligmentConverter}, TargetNullValue={StaticResource TextCenterAligmnent}, FallbackValue={StaticResource TextCenterAligmnent}}"
-                                Text="{Binding Text}" />
+                                Text="{Binding Text}">
+                            </TextBlock>
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
@@ -186,7 +187,8 @@
                 <TextBox
                     x:Name="MessageTextBox"
                     x:FieldModifier="internal"
-                    MinWidth="360"/>
+                    KeyDown="MessageTextBox_KeyDown"
+                    MinWidth="360" />
             </controls:DockPanel>
         </StackPanel>
         <StackPanel

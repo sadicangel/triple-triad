@@ -28,4 +28,10 @@ public sealed partial class LobbyPage : Page
             _ => throw new InvalidOperationException()
         };
     }
+
+    private void MessageTextBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter && !String.IsNullOrWhiteSpace(MessageTextBox.Text))
+            ViewModel.SendMessageCommand.Execute(MessageTextBox.Text);
+    }
 }
