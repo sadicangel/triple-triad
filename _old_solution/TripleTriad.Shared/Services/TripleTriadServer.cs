@@ -1,4 +1,5 @@
-﻿using Google.Protobuf.Collections;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using System.Collections.Concurrent;
@@ -9,6 +10,7 @@ namespace TripleTriad.Services;
 
 public sealed class TripleTriadServer : TripleTriadService.TripleTriadServiceBase, ITripleTriadServer
 {
+    private readonly IMessenger _messenger;
     private readonly Server _server;
     private Board? _board;
     private int _subscriptionCounter = 0;
@@ -19,12 +21,9 @@ public sealed class TripleTriadServer : TripleTriadService.TripleTriadServiceBas
 
     public bool IsHosting { get => true; }
 
-    public event EventHandler<Player>? PlayerConnected;
-
-    public event EventHandler<Message>? MessageReceived;
-
-    public TripleTriadServer(Player player, int port)
+    public TripleTriadServer(IMessenger messenger, Player player, int port)
     {
+        _messenger = messenger;
         _server = new Server
         {
             Services = { TripleTriadService.BindService(this) },
@@ -63,27 +62,6 @@ public sealed class TripleTriadServer : TripleTriadService.TripleTriadServiceBas
         return Task.CompletedTask;
     }
 
-    public override Task<HandshakeResponse> Handshake(HandshakeRequest request, ServerCallContext context)
-    {
-        PlayerConnected?.Invoke(this, request.ClientPlayer);
-        return Task.FromResult(new HandshakeResponse
-        {
-            ServerPlayer = Player,
-            Subscription = new Subscription { Id = (++_subscriptionCounter).ToString() }
-        });
-    }
-
-    public override async Task Subscribe(Subscription request, IServerStreamWriter<Message> responseStream, ServerCallContext context)
-    {
-        var subscriptionId = request.Id;
-        _subscriptions.TryAdd(subscriptionId, responseStream);
-        while (_subscriptions.ContainsKey(subscriptionId))
-        {
-            var response = await _messageBuffer.ReceiveAsync();
-            await Task.WhenAll(_subscriptions.Values.Select(s => s.WriteAsync(response)));
-        }
-    }
-
     public override async Task<Message> Receive(MessageSelector request, ServerCallContext context)
     {
         switch ((Message.ContentOneofCase)request.Type)
@@ -99,7 +77,7 @@ public sealed class TripleTriadServer : TripleTriadService.TripleTriadServiceBas
 
     public override Task<Empty> Send(Message request, ServerCallContext context)
     {
-        MessageReceived?.Invoke(this, request);
+        _messenger.Send(request, nameof(ITripleTriadServer));
         return ProtobufHelper.EmptyResponseTask;
     }
 

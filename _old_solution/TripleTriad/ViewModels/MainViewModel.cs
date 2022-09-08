@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using System.Diagnostics.CodeAnalysis;
@@ -14,6 +15,7 @@ namespace TripleTriad.ViewModels;
 public sealed class MainViewModel : BaseViewModel<object, MainPage>
 {
     private readonly INavigationService _navigation;
+    private readonly IMessenger _messenger;
     private CancellationTokenSource? _cancellationSource;
     private ContentDialog? _contentDialog;
 
@@ -39,9 +41,10 @@ public sealed class MainViewModel : BaseViewModel<object, MainPage>
 
     [NotNull] public ITripleTriadUser? User { get; private set; }
 
-    public MainViewModel(INavigationService navigation)
+    public MainViewModel(INavigationService navigation, IMessenger messenger)
     {
         _navigation = navigation;
+        _messenger = messenger;
         HostCommand = new AsyncRelayCommand<string>(HostAsync);
         JoinCommand = new AsyncRelayCommand<string>(JoinAsync);
         Player = new PlayerViewModel
@@ -56,9 +59,9 @@ public sealed class MainViewModel : BaseViewModel<object, MainPage>
             throw new InvalidOperationException("Invalid port");
         Player.Color = Colors.DarkGreen;
         Player.IsLeft = true;
-        var server = ITripleTriadServer.Create(Player.Model, portValue);
+        var server = ITripleTriadServer.Create(_messenger, Player.Model, portValue);
         User = server;
-        User.PlayerConnected += Server_PlayerConnected;
+        _messenger.Register<MainViewModel, Player, string>(this, nameof(ITripleTriadServer), Server_PlayerConnected);
         _contentDialog = new ContentDialog
         {
             XamlRoot = View.XamlRoot,
@@ -70,12 +73,12 @@ public sealed class MainViewModel : BaseViewModel<object, MainPage>
         await server.HostAsync(CancellationSource.Token);
     }
 
-    private void Server_PlayerConnected(object? sender, Player e)
+    private void Server_PlayerConnected(MainViewModel sender, Player e)
     {
-        RunOnUIThread(() =>
+        sender.RunOnUIThread(() =>
         {
-            _contentDialog?.Hide();
-            _navigation.NavigateTo<LobbyViewModel>();
+            sender._contentDialog?.Hide();
+            sender._navigation.NavigateTo<LobbyViewModel>();
         });
     }
 
@@ -85,7 +88,7 @@ public sealed class MainViewModel : BaseViewModel<object, MainPage>
             throw new InvalidOperationException("Invalid address");
         Player.Color = Colors.DarkRed;
         Player.IsLeft = false;
-        var client = ITripleTriadClient.Create(Player.Model, address);
+        var client = ITripleTriadClient.Create(_messenger, Player.Model, address);
         User = client;
         using var tokenSource = new CancellationTokenSource();
         _contentDialog = new ContentDialog

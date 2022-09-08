@@ -202,6 +202,7 @@
                 Content="Ready"
                 Command="{Binding ReadyCommand}" />
             <Button
+                IsEnabled="{Binding CanStart, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 HorizontalAlignment="Right"
                 Width="200"
                 Content="Start"

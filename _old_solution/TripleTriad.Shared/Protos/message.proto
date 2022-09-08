@@ -5,6 +5,8 @@ option csharp_namespace = "TripleTriad.Models";
 package tripletriad;
 
 import "player.proto";
+import "navigation.proto";
+import "status.proto";
 import "ruleset.proto";
 import "board.proto";
 import "move.proto";
@@ -12,10 +14,11 @@ import "move.proto";
 message Message {
   Player player = 1;
   oneof content {
-    string text = 2;
-    bool ready = 3;
-    Ruleset ruleset = 4;
-    Board board = 5;
-    Move move = 6;
+    Navigation navigation = 2;
+    string text = 3;
+    Status status = 4;
+    Ruleset ruleset = 5;
+    Board board = 6;
+    Move move = 7;
   }
 }

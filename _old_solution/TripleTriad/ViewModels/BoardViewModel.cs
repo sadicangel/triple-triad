@@ -10,6 +10,7 @@ namespace TripleTriad.ViewModels;
 
 public sealed class BoardViewModel : BaseViewModel<Board, BoardPage>
 {
+    private bool _isStarted;
     private readonly ICardRepository _repository;
     private RulesetViewModel _ruleset = new()
     {
@@ -23,6 +24,8 @@ public sealed class BoardViewModel : BaseViewModel<Board, BoardPage>
     private ObservableCollection<CardViewModel> _rightHand = new();
     private ObservableCollection<CellViewModel> _cells = new();
     private PlayerViewModel? _winner = new();
+
+    public bool IsStarted { get => _isStarted; set => SetProperty(ref _isStarted, value); }
 
     public bool IsLeftActive { get => Model.IsLeftActive; set => SetProperty(m => m.IsLeftActive, (m, v) => m.IsLeftActive = v, value, OnIsLeftActiveChanged); }
 

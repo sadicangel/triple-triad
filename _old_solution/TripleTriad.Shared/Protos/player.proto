@@ -5,7 +5,8 @@ option csharp_namespace = "TripleTriad.Models";
 package tripletriad;
 
 message Player {
-  string name = 1;
-  uint32 color = 2;
-  bool is_left = 3;
+  string id = 1;
+  string name = 2;
+  uint32 color = 3;
+  bool is_left = 4;
 }

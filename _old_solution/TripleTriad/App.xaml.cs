@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI;
@@ -44,6 +45,7 @@ public partial class App : Application
     {
         services.AddCardRepository();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IMessenger, WeakReferenceMessenger>();
         // ViewModels
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<LobbyViewModel>();

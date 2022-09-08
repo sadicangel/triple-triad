@@ -31,8 +31,9 @@
     <None Remove="Protos\message.proto" />
     <None Remove="Protos\message_selector.proto" />
     <None Remove="Protos\move.proto" />
+    <None Remove="Protos\navigation.proto" />
     <None Remove="Protos\ruleset.proto" />
-    <None Remove="Protos\subscription.proto" />
+    <None Remove="Protos\status.proto" />
   </ItemGroup>
 
   <ItemGroup>

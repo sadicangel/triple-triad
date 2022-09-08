@@ -6,15 +6,11 @@ public interface ITripleTriadUser : IAsyncDisposable
 
     public bool IsHosting { get; }
 
-    public event EventHandler<Player>? PlayerConnected;
-
-    public event EventHandler<Message>? MessageReceived;
-
     public Task<Board> GetBoardAsync();
 
     public Task SendMessageAsync(Message message);
 
-    public Task SendMessageAsync(bool ready) => SendMessageAsync(new Message { Player = Player, Ready = ready });
+    public Task SendMessageAsync(Status status) => SendMessageAsync(new Message { Player = Player, Status = status });
 
     public Task SendMessageAsync(string text) => SendMessageAsync(new Message { Player = Player, Text = text });
 

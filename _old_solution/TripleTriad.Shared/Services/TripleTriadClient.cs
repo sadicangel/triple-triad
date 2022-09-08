@@ -1,4 +1,5 @@
-﻿using Grpc.Net.Client;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using Grpc.Net.Client;
 using TripleTriad.Models;
 
 namespace TripleTriad.Services;
@@ -6,6 +7,7 @@ namespace TripleTriad.Services;
 
 public sealed class TripleTriadClient : TripleTriadService.TripleTriadServiceClient, ITripleTriadClient
 {
+    private readonly IMessenger _messenger;
     private readonly GrpcChannel _channel;
     private Subscription? _subscription;
 
@@ -13,12 +15,9 @@ public sealed class TripleTriadClient : TripleTriadService.TripleTriadServiceCli
 
     public bool IsHosting { get => false; }
 
-    public event EventHandler<Player>? PlayerConnected;
-
-    public event EventHandler<Message>? MessageReceived;
-
-    public TripleTriadClient(Player player, GrpcChannel channel) : base(channel)
+    public TripleTriadClient(IMessenger messenger, Player player, GrpcChannel channel) : base(channel)
     {
+        _messenger = messenger;
         _channel = channel;
         Player = player;
     }
@@ -38,7 +37,7 @@ public sealed class TripleTriadClient : TripleTriadService.TripleTriadServiceCli
 
         await SubscribeMessages(_subscription, cancellationToken);
 
-        PlayerConnected?.Invoke(this, response.ServerPlayer);
+        _messenger.Send(response.ServerPlayer, nameof(ITripleTriadClient));
 
         return response.ServerPlayer;
         
@@ -49,8 +48,7 @@ public sealed class TripleTriadClient : TripleTriadService.TripleTriadServiceCli
             {
                 var call = Subscribe(subscription, cancellationToken: cancellationToken);
                 while (await call.ResponseStream.MoveNext(cancellationToken))
-                    MessageReceived?.Invoke(this, call.ResponseStream.Current);
-                Console.WriteLine();
+                    _messenger.Send(call.ResponseStream.Current, nameof(ITripleTriadClient));
             }, cancellationToken)
                 .ConfigureAwait(false)
                 .GetAwaiter();

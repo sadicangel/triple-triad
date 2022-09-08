@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using System.Collections.ObjectModel;
@@ -12,10 +13,11 @@ using Windows.ApplicationModel.Core;
 
 namespace TripleTriad.ViewModels;
 
-public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
+public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>, IRecipient<Message>
 {
     private readonly ITripleTriadUser _user;
     private readonly INavigationService _navigation;
+    private readonly IMessenger _messenger;
     private RulesetViewModel _ruleset = new()
     {
         Model = new()
@@ -42,21 +44,23 @@ public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
     public bool CanStart { get => (_user?.IsHosting ?? true) && _canStart; set => SetProperty(ref _canStart, value); }
     public RelayCommand StartCommand { get; }
 
-    public LobbyViewModel(INavigationService navigation, MainViewModel main)
+    public LobbyViewModel(INavigationService navigation, IMessenger messenger, MainViewModel main)
     {
         IsBusy = true;
         _navigation = navigation;
-        _user = main.User ?? ITripleTriadServer.Create(new Player { Name = "Test", Color = Colors.DarkGreen.ToUint32(), IsLeft = true }, 50051);
-        _user.MessageReceived += User_MessageReceived;
+        _messenger = messenger;
+        _user = main.User;
+        _messenger.Register(this, nameof(ITripleTriadClient));
+        _messenger.Register(this, nameof(ITripleTriadServer));
         MatchRuleCheckedCommand = new RelayCommand<MatchRules>(OnMatchRuleChecked);
         BoardRuleCheckedCommand = new RelayCommand<BoardRules>(OnBoardRuleChecked);
         TradeRuleCheckedCommand = new RelayCommand<TradeRules>(OnTradeRuleChecked);
         SendMessageCommand = new RelayCommand<string>(OnSendMessage, msg => !String.IsNullOrWhiteSpace(msg));
         ReadyCommand = new RelayCommand(OnReady);
-        StartCommand = new RelayCommand(OnStart, () => CanStart);
+        StartCommand = new RelayCommand(OnStart);
     }
 
-    private void User_MessageReceived(object? sender, Message message)
+    public void Receive(Message message)
     {
         switch (message.ContentCase)
         {
@@ -65,15 +69,6 @@ public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
             case Message.ContentOneofCase.Text:
                 RunOnUIThread(() => Chat.Add(message));
                 return;
-            case Message.ContentOneofCase.Ready:
-                RunOnUIThread(() =>
-                {
-                    if(message.Ready)
-                        Chat.Add(new Message { Text = $"{message.Player.Name} is ready." });
-                    _otherIsReady = message.Ready;
-                    CanStart = _isReady && _otherIsReady;
-                });
-                return;
             case Message.ContentOneofCase.Ruleset:
                 RunOnUIThread(() =>
                 {
@@ -81,10 +76,28 @@ public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
                     OnPropertyChanged(nameof(Ruleset));
                 });
                 return;
+            case Message.ContentOneofCase.Status:
+                switch (message.Status)
+                {
+                    case Status.Ready:
+                        RunOnUIThread(() =>
+                        {
+                            _otherIsReady = !_otherIsReady;
+                            if (_otherIsReady)
+                                Chat.Add(new Message { Text = $"{message.Player.Name} is ready." });
+                            CanStart = _isReady && _otherIsReady;
+                        });
+                        return;
+                    case Status.Start:
+                        RunOnUIThread(() => _navigation.NavigateTo<BoardViewModel>());
+                        return;
+                }
+                return;
             default:
                 return;
         }
     }
+
     private void OnMatchRuleChecked(MatchRules rule)
     {
         Ruleset.MatchRules ^= rule;
@@ -123,7 +136,7 @@ public sealed class LobbyViewModel : BaseViewModel<object, LobbyPage>
     private void OnReady()
     {
         _isReady = !_isReady;
-        _user.SendMessageAsync(_isReady).ConfigureAwait(false).GetAwaiter();
+        _user.SendMessageAsync(Status.Ready).ConfigureAwait(false).GetAwaiter();
         CanStart = _isReady && _otherIsReady;
     }
 
