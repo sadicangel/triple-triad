@@ -6,7 +6,7 @@ builder.Services
 
 var app = builder.Build();
 
-app.MapHub<ServerHub>("/triple-triad");
+app.MapHub<GameHub>("/triple-triad");
 
 if (app.Environment.IsDevelopment())
     app.MapGet("/", () => "Triple Triad server running!");
