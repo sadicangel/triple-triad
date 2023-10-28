@@ -1,0 +1,85 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net7.0-android;net7.0-windows10.0.19041.0</TargetFrameworks>
+		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
+		<!-- <TargetFrameworks>$(TargetFrameworks);net7.0-tizen</TargetFrameworks> -->
+		<OutputType>Exe</OutputType>
+		<RootNamespace>TripleTriad</RootNamespace>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+		<ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+		<!-- Display name -->
+		<ApplicationTitle>TripleTriad</ApplicationTitle>
+
+		<!-- App Identifier -->
+		<ApplicationId>com.companyname.tripletriad</ApplicationId>
+		<ApplicationIdGuid>10bbcc24-5e9e-4bb8-a2b5-6a22f73e0ac5</ApplicationIdGuid>
+
+		<!-- Versions -->
+		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- App Icon -->
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+
+		<!-- Splash Screen -->
+		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+
+		<!-- Images -->
+		<MauiImage Include="Resources\Images\*" />
+
+		<!-- Custom Fonts -->
+		<MauiFont Include="Resources\Fonts\*" />
+
+		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="Resources\Images\card_back.png" />
+	  <None Remove="Resources\Images\card_board.png" />
+	  <None Remove="Resources\Images\card_missing.png" />
+	  <None Remove="Resources\Images\element_dark.png" />
+	  <None Remove="Resources\Images\element_earth.png" />
+	  <None Remove="Resources\Images\element_fire.png" />
+	  <None Remove="Resources\Images\element_holy.png" />
+	  <None Remove="Resources\Images\element_ice.png" />
+	  <None Remove="Resources\Images\element_poison.png" />
+	  <None Remove="Resources\Images\element_thunder.png" />
+	  <None Remove="Resources\Images\element_water.png" />
+	  <None Remove="Resources\Images\element_wind.png" />
+	  <None Remove="Resources\Images\game_logo.png" />
+	  <None Remove="Resources\Images\number_0.png" />
+	  <None Remove="Resources\Images\number_1.png" />
+	  <None Remove="Resources\Images\number_2.png" />
+	  <None Remove="Resources\Images\number_3.png" />
+	  <None Remove="Resources\Images\number_4.png" />
+	  <None Remove="Resources\Images\number_5.png" />
+	  <None Remove="Resources\Images\number_6.png" />
+	  <None Remove="Resources\Images\number_7.png" />
+	  <None Remove="Resources\Images\number_8.png" />
+	  <None Remove="Resources\Images\number_9.png" />
+	  <None Remove="Resources\Images\number_A.png" />
+	  <None Remove="Resources\Images\rule_combo.png" />
+	  <None Remove="Resources\Images\rule_plus.png" />
+	  <None Remove="Resources\Images\rule_same.png" />
+	  <None Remove="Resources\Raw\cards_ff8.json" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\TripleTriad.Domain\TripleTriad.Domain.csproj" />
+	</ItemGroup>
+
+</Project>

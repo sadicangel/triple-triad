@@ -1,0 +1,26 @@
+version: '3.4'
+
+services:
+  tripletriad.cache:
+    container_name: tripletriad_cache
+    image: redis
+
+  tripletriad.database:
+    container_name: tripletriad_database
+    image: mongo
+
+  tripletriad.database.admin:
+    container_name: tripletriad_database_admin
+    image: mongo-express
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_SERVER: tripletriad_database
+
+  tripletriad.server:
+    container_name: tripletriad_server
+    image: ${DOCKER_REGISTRY-}tripletriadserver
+    build:
+      context: .
+      dockerfile: TripleTriad.Server/Dockerfile
+

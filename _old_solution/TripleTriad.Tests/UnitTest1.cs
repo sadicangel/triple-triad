@@ -7,6 +7,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using TripleTriad.Models;
 using TripleTriad.Repositories;
 using Xunit;
@@ -64,10 +66,15 @@ public class UnitTest1
         using var liteDb = new LiteDatabase(@"Assets\Cards.db", BsonMapper.Global.UseCamelCase());
 
         var repository = new CardRepository(liteDb);
-        foreach (var card in repository.FindAll())
-        {
-            Debug.WriteLine(card.Name);
-        }
+        var cardsJson = System.Text.Json.JsonSerializer.Serialize(repository.FindAll(),
+            new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Converters = {
+                    new JsonStringEnumConverter()
+                }
+            });
+        File.WriteAllText(@"D:\Development\triple-triad\TripleTriad.Shared\cards.json", cardsJson);
     }
 
     [Fact]

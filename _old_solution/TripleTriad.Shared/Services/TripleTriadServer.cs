@@ -62,18 +62,18 @@ public sealed class TripleTriadServer : TripleTriadService.TripleTriadServiceBas
         return Task.CompletedTask;
     }
 
-    public override async Task<Message> Receive(MessageSelector request, ServerCallContext context)
-    {
-        switch ((Message.ContentOneofCase)request.Type)
-        {
-            case Message.ContentOneofCase.Ruleset:
-                return new Message { Ruleset = (await GetBoardAsync()).Ruleset };
-            case Message.ContentOneofCase.Board:
-                return new Message { Board = await GetBoardAsync() };
-            default:
-                return ProtobufHelper.EmptyMessage;
-        }
-    }
+    //public override async Task<Message> Receive(MessageSelector request, ServerCallContext context)
+    //{
+    //    switch ((Message.ContentOneofCase)request.Type)
+    //    {
+    //        case Message.ContentOneofCase.Ruleset:
+    //            return new Message { Ruleset = (await GetBoardAsync()).Ruleset };
+    //        case Message.ContentOneofCase.Board:
+    //            return new Message { Board = await GetBoardAsync() };
+    //        default:
+    //            return ProtobufHelper.EmptyMessage;
+    //    }
+    //}
 
     public override Task<Empty> Send(Message request, ServerCallContext context)
     {

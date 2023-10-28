@@ -1,0 +1,8 @@
+﻿using AutoMapper;
+
+namespace TripleTriad.Interfaces;
+
+public interface IMapTo<T>
+{
+    void MapTo(Profile profile) => profile.CreateMap(GetType(), typeof(T));
+}

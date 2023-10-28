@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewmodels="clr-namespace:TripleTriad.ViewModels"
+    xmlns:controls="clr-namespace:TripleTriad.Controls"
+    x:Class="TripleTriad.Views.CardView"
+    x:DataType="viewmodels:CardViewModel"
+    WidthRequest="256"
+    HeightRequest="256">
+    <Border
+        x:Name="_card"
+        StrokeThickness="7.5"
+        Stroke="{Binding BorderColor}">
+        <Border.Shadow>
+            <Shadow Offset="5,5" />
+        </Border.Shadow>
+        <Grid
+            Padding="-7.5">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding TappedCommand}" />
+            </Grid.GestureRecognizers>
+            <Grid
+                x:Name="_cardBack"
+                RotationY="180"
+                Opacity="0">
+                <Image
+                    Source="card_back.png"/>
+            </Grid>
+            <Grid
+                x:Name="_cardFront"
+                RowDefinitions="*,*,*"
+                ColumnDefinitions="*,*,*"
+                BackgroundColor="{Binding BackgroundColor}">
+                <Image
+                    Grid.RowSpan="3"
+                    Grid.ColumnSpan="3"
+                    Source="{Binding ImageUri}" />
+                <Grid
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    Padding="15,15,0,0"
+                    RowDefinitions="*,*,*"
+                    ColumnDefinitions="*,*,*">
+                    <Image
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        WidthRequest="24"
+                        Source="{Binding UpUri}" />
+                    <Image
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        WidthRequest="24"
+                        Source="{Binding LeftUri}" />
+                    <Image
+                        Grid.Row="1"
+                        Grid.Column="2"
+                        WidthRequest="24"
+                        Source="{Binding RightUri}" />
+                    <Image
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        WidthRequest="24"
+                        Source="{Binding DownUri}" />
+                </Grid>
+                <Image
+                    Grid.Row="0"
+                    Grid.Column="2"
+                    WidthRequest="24"
+                    VerticalOptions="StartAndExpand"
+                    HorizontalOptions="EndAndExpand"
+                    Margin="25"
+                    Source="{Binding ElementUri}" />
+                <Label
+                    Grid.Row="2"
+                    Grid.ColumnSpan="3"
+                    VerticalOptions="EndAndExpand"
+                    HorizontalOptions="EndAndExpand"
+                    Margin="0,0,15,15"
+                    FontSize="Medium"
+                    TextColor="AntiqueWhite"
+                    Text="{Binding Card.Name}" />
+            </Grid>
+        </Grid>
+    </Border>
+</ContentView>

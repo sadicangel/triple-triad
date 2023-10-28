@@ -3,7 +3,51 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32210.238
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{2BE86CD8-9EEB-4AEB-A0EA-6B84D8BB554D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TripleTriad.Domain", "TripleTriad.Domain\TripleTriad.Domain.csproj", "{84A94944-A95C-4ACA-8F6F-197EA2B222FD}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TripleTriad.Console", "TripleTriad.Console\TripleTriad.Console.csproj", "{D4EF98D9-81B9-4537-877E-2E146DFA9794}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TripleTriad", "TripleTriad\TripleTriad.csproj", "{F32F290D-396B-4B37-8875-BC9C809F2E73}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TripleTriad.Server", "TripleTriad.Server\TripleTriad.Server.csproj", "{801667BD-1F40-4A02-B44F-3B0ADCDCFE28}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TripleTriad.Infrastructure", "TripleTriad.Infrastructure\TripleTriad.Infrastructure.csproj", "{6197078A-6066-4B2A-9476-894D8FE9E5AB}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2BE86CD8-9EEB-4AEB-A0EA-6B84D8BB554D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2BE86CD8-9EEB-4AEB-A0EA-6B84D8BB554D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2BE86CD8-9EEB-4AEB-A0EA-6B84D8BB554D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2BE86CD8-9EEB-4AEB-A0EA-6B84D8BB554D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84A94944-A95C-4ACA-8F6F-197EA2B222FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84A94944-A95C-4ACA-8F6F-197EA2B222FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84A94944-A95C-4ACA-8F6F-197EA2B222FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84A94944-A95C-4ACA-8F6F-197EA2B222FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4EF98D9-81B9-4537-877E-2E146DFA9794}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4EF98D9-81B9-4537-877E-2E146DFA9794}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4EF98D9-81B9-4537-877E-2E146DFA9794}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4EF98D9-81B9-4537-877E-2E146DFA9794}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F32F290D-396B-4B37-8875-BC9C809F2E73}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F32F290D-396B-4B37-8875-BC9C809F2E73}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F32F290D-396B-4B37-8875-BC9C809F2E73}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{F32F290D-396B-4B37-8875-BC9C809F2E73}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F32F290D-396B-4B37-8875-BC9C809F2E73}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F32F290D-396B-4B37-8875-BC9C809F2E73}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{801667BD-1F40-4A02-B44F-3B0ADCDCFE28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{801667BD-1F40-4A02-B44F-3B0ADCDCFE28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{801667BD-1F40-4A02-B44F-3B0ADCDCFE28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{801667BD-1F40-4A02-B44F-3B0ADCDCFE28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6197078A-6066-4B2A-9476-894D8FE9E5AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6197078A-6066-4B2A-9476-894D8FE9E5AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6197078A-6066-4B2A-9476-894D8FE9E5AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6197078A-6066-4B2A-9476-894D8FE9E5AB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
