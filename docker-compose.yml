@@ -1,0 +1,39 @@
+version: '3.4'
+
+services:
+  server:
+    image: ${DOCKER_REGISTRY-}server
+    container_name: server
+    build:
+      context: .
+      dockerfile: src/Server/Dockerfile
+    depends_on:
+      - postgres
+  postgres:
+    image: postgres
+    container_name: postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+       - ./docker_local/postgresql/data:/var/lib/postgresql/data
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    depends_on:
+      - postgres
+    ports:
+      - 5433:80
+    entrypoint:
+      - "/bin/sh"
+      - "-c"
+      - "/bin/echo 'postgres:5432:*:postgres:password' > /tmp/pgpassfile && chmod 600 /tmp/pgpassfile && /entrypoint.sh"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=postgres@email.com
+      - PGADMIN_DEFAULT_PASSWORD=postgres
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    volumes:
+      - ./docker_local/pgadmin:/var/lib/pgadmin
