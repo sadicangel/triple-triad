@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
 namespace TripleTriad;
-public sealed class User : IdentityUser<Guid>
+public sealed class User : IdentityUser<string>
 {
 #pragma warning disable CS8603 // Possible null reference return.
 #pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
@@ -12,6 +12,6 @@ public sealed class User : IdentityUser<Guid>
     public bool IsActive { get; set; }
 }
 
-public sealed class UserClaim : IdentityUserClaim<Guid> { }
-public sealed class UserLogin : IdentityUserLogin<Guid> { }
-public sealed class UserToken : IdentityUserToken<Guid> { }
+public sealed class UserClaim : IdentityUserClaim<string> { }
+public sealed class UserLogin : IdentityUserLogin<string> { }
+public sealed class UserToken : IdentityUserToken<string> { }

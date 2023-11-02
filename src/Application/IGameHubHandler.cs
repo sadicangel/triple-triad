@@ -1,8 +1,10 @@
-﻿using TripleTriad.ServerState;
-
-namespace TripleTriad;
+﻿namespace TripleTriad;
 
 public interface IGameHubHandler
 {
-    Task<ServerStateResponse> GetServerStateAsync();
+    Task<IReadOnlyCollection<OnlineUser>> GetUsersAsync();
+
+    Task<IReadOnlyCollection<Lobby>> GetLobbiesAsync();
+    Task CreateLobbyAsync(string name);
+    Task DeleteLobbyAsync(string lobbyId);
 }

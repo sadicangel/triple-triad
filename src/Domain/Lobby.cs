@@ -1,3 +1,3 @@
 ﻿namespace TripleTriad;
 
-public sealed record class Lobby(Guid Id, string Name, Guid Owner, List<Guid> Users, string Rules, bool IsActive);
+public sealed record class Lobby(string LobbyId, string DisplayName, string Owner, List<string> Users);
