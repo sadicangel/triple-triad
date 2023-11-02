@@ -1,27 +1,46 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using TripleTriad.ServerState;
 
 namespace TripleTriad;
 
 internal sealed class ServerManager(IDbContextFactory<DataContext> dbContextFactory)
 {
-    private readonly Dictionary<string, OnlineUser> _onlineUsers = [];
-    private readonly Dictionary<string, OnlineLobby> _onlineLobbies = [];
+    private readonly Dictionary<string, OnlineUser> _users = [];
+    private readonly Dictionary<string, Lobby> _lobbies = [];
 
-    public async Task<OnlineUser> AddOnlineUser(string userId)
+    public async Task<OnlineUser> ConnectUser(string userId)
     {
         using var dataContext = dbContextFactory.CreateDbContext();
-        if (!Guid.TryParse(userId, out var id)) throw new InvalidOperationException($"User {userId} is not valid");
-        var user = await dataContext.Users.FindAsync(id) ?? throw new InvalidOperationException($"User {userId} is not valid");
+        var user = await dataContext.Users.FindAsync(userId) ?? throw new InvalidOperationException($"User {userId} is not valid");
         var onlineUser = user.ToOnlineUser();
-        _onlineUsers[userId] = onlineUser;
+        _users[userId] = onlineUser;
         return onlineUser;
     }
 
-    public Task<OnlineUser> RemoveOnlineUser(string userId)
+    public Task<OnlineUser> DisconnectUser(string userId)
     {
-        return _onlineUsers.Remove(userId, out var onlineUser) ? Task.FromResult(onlineUser) : throw new InvalidOperationException($"User {userId} is not valid");
+        return _users.Remove(userId, out var onlineUser) ? Task.FromResult(onlineUser) : throw new InvalidOperationException($"User {userId} is not valid");
     }
 
-    public ServerStateResponse GetServerState() => new(_onlineUsers.Values, _onlineLobbies.Values);
+    public async Task<IReadOnlyCollection<OnlineUser>> GetUsersAsync() => await Task.FromResult(_users.Values);
+    public async Task<IReadOnlyCollection<Lobby>> GetLobbiesAsync() => await Task.FromResult(_lobbies.Values);
+
+    public Task<Lobby> CreateLobby(string userId, string name)
+    {
+        var lobby = new Lobby(Guid.NewGuid().ToString(), name, userId, [userId]);
+        _lobbies[lobby.LobbyId] = lobby;
+        return Task.FromResult(lobby);
+    }
+
+    public Task<Lobby> RemoveLobby(string userId, string lobbyId)
+    {
+        if (!_lobbies.TryGetValue(userId, out var lobby))
+            throw new InvalidOperationException($"Lobby {lobbyId} is not valid");
+
+        if (lobby.Owner != userId)
+            throw new InvalidOperationException($"Unauthorized");
+
+        _lobbies.Remove(lobbyId);
+
+        return Task.FromResult(lobby);
+    }
 }

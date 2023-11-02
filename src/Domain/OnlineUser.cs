@@ -1,6 +1,6 @@
 ﻿namespace TripleTriad;
 
-public sealed record class OnlineUser(Guid UserId, string UserName);
+public sealed record class OnlineUser(string UserId, string UserName);
 
 public static class OnlineUserMapper
 {

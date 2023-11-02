@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace TripleTriad;
 
-public sealed class DataContext(DbContextOptions<DataContext> options) : IdentityUserContext<User, Guid, UserClaim, UserLogin, UserToken>(options)
+public sealed class DataContext(DbContextOptions<DataContext> options) : IdentityUserContext<User, string, UserClaim, UserLogin, UserToken>(options)
 {
     //public DbSet<Lobby> Lobbies { get; set; } = default!;
 
@@ -14,6 +14,7 @@ public sealed class DataContext(DbContextOptions<DataContext> options) : Identit
         base.OnModelCreating(builder);
 
         builder.Entity<User>().ToTable("Users");
+        builder.Entity<User>().Property(u => u.Id).HasConversion<Guid>();
         builder.Entity<UserClaim>().ToTable("UserClaims");
         builder.Entity<UserLogin>().ToTable("UserLogins");
         builder.Entity<UserToken>().ToTable("UserTokens");

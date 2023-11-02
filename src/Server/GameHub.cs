@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using TripleTriad.ServerState;
 
 namespace TripleTriad;
 
@@ -7,7 +6,7 @@ internal sealed class GameHub(ILogger<GameHub> logger, ServerManager manager) : 
 {
     public override async Task OnConnectedAsync()
     {
-        var onlineUser = await manager.AddOnlineUser(Context.User.GetSubjectId());
+        var onlineUser = await manager.ConnectUser(Context.User.GetSubjectId());
         logger.LogInformation("User {user} has connected", onlineUser);
 
         await Clients.Others.OnUserConnected(onlineUser);
@@ -17,7 +16,7 @@ internal sealed class GameHub(ILogger<GameHub> logger, ServerManager manager) : 
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var onlineUser = await manager.RemoveOnlineUser(Context.User.GetSubjectId());
+        var onlineUser = await manager.DisconnectUser(Context.User.GetSubjectId());
         logger.LogInformation("User {user} has disconnected", onlineUser);
 
         await Clients.Others.OnUserDisconnected(onlineUser);
@@ -25,5 +24,20 @@ internal sealed class GameHub(ILogger<GameHub> logger, ServerManager manager) : 
         await base.OnDisconnectedAsync(exception);
     }
 
-    public Task<ServerStateResponse> GetServerStateAsync() => Task.FromResult(manager.GetServerState());
+    public Task<IReadOnlyCollection<OnlineUser>> GetUsersAsync() => manager.GetUsersAsync();
+    public Task<IReadOnlyCollection<Lobby>> GetLobbiesAsync() => manager.GetLobbiesAsync();
+
+    public async Task CreateLobbyAsync(string name)
+    {
+        var lobby = await manager.CreateLobby(Context.User.GetSubjectId(), name);
+
+        await Clients.All.OnLobbyCreated(lobby);
+    }
+
+    public async Task DeleteLobbyAsync(string lobbyId)
+    {
+        var lobby = await manager.RemoveLobby(Context.User.GetSubjectId(), lobbyId);
+
+        await Clients.All.OnLobbyRemoved(lobby);
+    }
 }
