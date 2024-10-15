@@ -1,3 +1,3 @@
 ﻿
-using var game = new TripleTriad.Game1();
+using var game = new TripleTriad.TripleTriadGame();
 game.Run();
