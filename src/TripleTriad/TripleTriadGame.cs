@@ -1,11 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using MonoGame.Extended.Content;
-using MonoGame.Extended.Serialization.Json;
-using TripleTriad.Components;
+﻿using TripleTriad.Components;
 using TripleTriad.Configuration;
 using TripleTriad.Scenes;
+using TripleTriad.Services;
+using TripleTriad.Util;
 
 namespace TripleTriad;
 public class TripleTriadGame : Game
@@ -14,7 +11,7 @@ public class TripleTriadGame : Game
     {
         var opts = MonoGameJsonSerializerOptionsProvider.GetOptions(Content, "appsettings.json");
         Content.RootDirectory = "Content";
-        Configuration = Content.Load<GameConfiguration>("appsettings.json", new GameConfigurationLoader());
+        Configuration = Content.Load<GameConfiguration>("appsettings.json", new JsonContentLoaderEx());
 
         var isFullscreen = Configuration.Window.IsFullscreen;
 
@@ -34,6 +31,7 @@ public class TripleTriadGame : Game
             .AddSingleton(provider => provider.GetRequiredService<GraphicsDeviceManager>().GraphicsDevice)
             .AddSingleton(provider => new SpriteBatch(provider.GetRequiredService<GraphicsDevice>()))
             .AddSingleton(Content)
+            .AddSingleton<CardProvider>()
             .AddSingleton<InputListenerComponent>()
             .AddSingleton<SceneManagerComponent>()
             .AddTransient<GameScene>()

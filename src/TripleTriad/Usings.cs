@@ -1,0 +1,10 @@
+﻿global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Xna.Framework;
+global using Microsoft.Xna.Framework.Content;
+global using Microsoft.Xna.Framework.Graphics;
+global using Microsoft.Xna.Framework.Input;
+global using MonoGame.Extended;
+global using MonoGame.Extended.Content;
+global using MonoGame.Extended.Graphics;
+global using MonoGame.Extended.Input;
+global using MonoGame.Extended.Serialization.Json;

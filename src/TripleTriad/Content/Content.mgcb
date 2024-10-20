@@ -17,6 +17,9 @@
 #begin ../appsettings.json
 /copy:../appsettings.json;appsettings.json
 
+#begin cards.json
+/copy:cards.json
+
 #begin spritesheet.png
 /importer:TextureImporter
 /processor:TextureProcessor

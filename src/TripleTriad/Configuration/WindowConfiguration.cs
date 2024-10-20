@@ -1,6 +1,4 @@
-﻿using MonoGame.Extended;
-
-namespace TripleTriad.Configuration;
+﻿namespace TripleTriad.Configuration;
 
 public sealed record class WindowConfiguration(
     Size Size,

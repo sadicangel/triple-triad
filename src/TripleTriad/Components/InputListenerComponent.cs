@@ -1,7 +1,5 @@
-﻿using Microsoft.Xna.Framework;
-using MonoGame.Extended.Input;
+﻿namespace TripleTriad.Components;
 
-namespace TripleTriad.Components;
 public sealed class InputListenerComponent(TripleTriadGame game)
     : GameComponent(game)
 {
