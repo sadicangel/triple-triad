@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 
 namespace TripleTriad.Core;
 
-public sealed record class Card(
+public sealed record class CardData(
     int Edition,
     int Number,
     int Tier,

@@ -1,4 +1,5 @@
-﻿using TripleTriad.Components;
+﻿using MonoGame.Extended.ViewportAdapters;
+using TripleTriad.Components;
 using TripleTriad.Configuration;
 using TripleTriad.Scenes;
 using TripleTriad.Services;
@@ -27,9 +28,16 @@ public class TripleTriadGame : Game
         Services = new ServiceCollection()
             .AddSingleton(this)
             .AddSingleton(Configuration)
+            .AddSingleton(Window)
             .AddSingleton(graphicsDeviceManager)
             .AddSingleton(provider => provider.GetRequiredService<GraphicsDeviceManager>().GraphicsDevice)
             .AddSingleton(provider => new SpriteBatch(provider.GetRequiredService<GraphicsDevice>()))
+            .AddSingleton<ViewportAdapter>(provider => new BoxingViewportAdapter(
+                window: provider.GetRequiredService<GameWindow>(),
+                graphicsDevice: provider.GetRequiredService<GraphicsDevice>(),
+                virtualWidth: 1440,
+                virtualHeight: 810))
+            .AddSingleton(provider => new OrthographicCamera(provider.GetRequiredService<ViewportAdapter>()))
             .AddSingleton(Content)
             .AddSingleton<CardProvider>()
             .AddSingleton<InputListenerComponent>()

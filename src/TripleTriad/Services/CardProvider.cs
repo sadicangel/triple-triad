@@ -1,5 +1,5 @@
 ﻿using TripleTriad.Core;
-using TripleTriad.Sprites;
+using TripleTriad.Objects;
 using TripleTriad.Util;
 
 namespace TripleTriad.Services;
@@ -7,33 +7,27 @@ namespace TripleTriad.Services;
 public sealed class CardProvider(ContentManager contentManager)
 {
     private readonly Texture2DAtlas _atlas = CreateAtlas(contentManager);
-    private readonly Card[] _cards = CreateCards(contentManager);
+    private readonly CardData[] _cards = CreateCards(contentManager);
 
     private static Texture2DAtlas CreateAtlas(ContentManager contentManager)
     {
-        var atlas = Texture2DAtlas.Create("atlas", contentManager.Load<Texture2D>("spritesheet"), 256, 256, 110);
-        atlas.CreateRegion("card_back", new Point(0, 10 * 256), new Size(256, 256));
+        const int Size = 256;
+        var atlas = Texture2DAtlas.Create("atlas", contentManager.Load<Texture2D>("spritesheet"), Size, Size, 110);
+        atlas.CreateRegion("card_back", new Point(0, 10 * Size), new Size(Size, Size));
+        atlas.CreateRegion("card_fill", new Point(Size, 10 * Size), new Size(Size, Size));
         return atlas;
     }
 
-    private static Card[] CreateCards(ContentManager contentManager)
+    private static CardData[] CreateCards(ContentManager contentManager)
     {
-        return contentManager.Load<Card[]>("cards.json", new JsonContentLoaderEx());
+        return contentManager.Load<CardData[]>("cards.json", new JsonContentLoaderEx());
     }
 
-    public CardSprite CreateCard(int number)
+    public Card CreateCard(int number)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(number, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(number, 110);
 
-        var index = number - 1;
-
-        var card = _cards[index] with { };
-
-        var sprite = _atlas.CreateSprite(index);
-
-        sprite.Origin = Vector2.Zero;
-
-        return new CardSprite(sprite, card);
+        return new Card(_cards[number - 1], _atlas);
     }
 }

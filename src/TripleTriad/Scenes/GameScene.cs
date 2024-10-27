@@ -1,25 +1,45 @@
-﻿using TripleTriad.Services;
-using TripleTriad.Sprites;
+﻿using TripleTriad.Components;
+using TripleTriad.Objects;
+using TripleTriad.Services;
 
 namespace TripleTriad.Scenes;
 
 public sealed class GameScene(
-    SpriteBatch spriteBatch,
-    CardProvider cardProvider)
+    CardProvider cardProvider,
+    OrthographicCamera camera,
+    InputListenerComponent inputListener)
     : IScene
 {
-    private readonly CardSprite[] _sprites = Enumerable.Range(1, 110).Select(cardProvider.CreateCard).ToArray();
+    private readonly Card[] _cards = Enumerable
+        .Range(1, 110)
+        .Select((n, i) =>
+        {
+            var card = cardProvider.CreateCard(n);
+            card.Position = new Vector2(i % 11 * 256, i / 11 * 256);
+            return card;
+        })
+        .ToArray();
 
     public void Update(GameTime gameTime)
     {
+        const float PixelsPerSecond = 500f;
 
+        var position = camera.Position;
+        if (inputListener.KeyboardState.IsKeyDown(Keys.Right))
+            position.X += gameTime.GetElapsedSeconds() * PixelsPerSecond;
+        if (inputListener.KeyboardState.IsKeyDown(Keys.Left))
+            position.X -= gameTime.GetElapsedSeconds() * PixelsPerSecond;
+        if (inputListener.KeyboardState.IsKeyDown(Keys.Down))
+            position.Y += gameTime.GetElapsedSeconds() * PixelsPerSecond;
+        if (inputListener.KeyboardState.IsKeyDown(Keys.Up))
+            position.Y -= gameTime.GetElapsedSeconds() * PixelsPerSecond;
+
+        camera.Position = position;
     }
 
-    public void Draw(SpriteBatch gameTime)
+    public void Draw(SpriteBatch spriteBatch)
     {
-        for (var i = 0; i < _sprites.Length; ++i)
-        {
-            spriteBatch.Draw(_sprites[i].Sprite, new Vector2(i % 11 * 256, i / 11 * 256));
-        }
+        foreach (var card in _cards)
+            card.Draw(spriteBatch);
     }
 }
