@@ -11,13 +11,19 @@ public sealed class CardProvider(ContentManager contentManager)
 
     private static Texture2DAtlas CreateAtlas(ContentManager contentManager)
     {
-        const int Size = 256;
-        var atlas = Texture2DAtlas.Create("atlas", contentManager.Load<Texture2D>("spritesheet"), Size, Size, 110);
-        atlas.CreateRegion("card_back", new Point(0 * Size, 10 * Size), new Size(Size, Size));
-        atlas.CreateRegion("card_fill", new Point(1 * Size, 10 * Size), new Size(Size, Size));
-        var numberOffset = new Point(2 * Size, 10 * Size);
+        const int CardSz = 256;
+        var atlas = Texture2DAtlas.Create("atlas", contentManager.Load<Texture2D>("spritesheet"), CardSz, CardSz, 110);
+        atlas.CreateRegion("card_back", new Point(0 * CardSz, 10 * CardSz), new Size(CardSz, CardSz));
+        atlas.CreateRegion("card_fill", new Point(1 * CardSz, 10 * CardSz), new Size(CardSz, CardSz));
+
+        const int ElemSz = 32;
+        var numOffset = new Point(2 * CardSz, 10 * CardSz);
         for (var i = 0; i <= 10; ++i)
-            atlas.CreateRegion($"number_{i:X1}", numberOffset + new Point((i % 8) * 32, (i / 8) * 32), new Size(32, 32));
+            atlas.CreateRegion($"number_{i:X1}", numOffset + new Point(i % 8 * ElemSz, i / 8 * ElemSz), new Size(ElemSz, ElemSz));
+
+        var elemOffset = new Point(3 * CardSz, 10 * CardSz);
+        foreach (var element in Enum.GetValues<Element>())
+            atlas.CreateRegion($"element_{(int)element:X1}", elemOffset + new Point((int)element % 8 * ElemSz, (int)element / 8 * ElemSz), new Size(ElemSz, ElemSz));
         return atlas;
     }
 
