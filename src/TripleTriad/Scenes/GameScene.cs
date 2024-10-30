@@ -35,11 +35,22 @@ public sealed class GameScene(
             position.Y -= gameTime.GetElapsedSeconds() * PixelsPerSecond;
 
         camera.Position = position;
+
+        if (camera.Contains(inputListener.MouseState.Position) is ContainmentType.Contains)
+        {
+            if (inputListener.MouseState.WasButtonPressed(MouseButton.Left))
+            {
+                if (_cards.FirstOrDefault(card => card.Border.Contains(inputListener.MouseState.Position)) is Card card)
+                {
+                    card.Flip();
+                }
+            }
+        }
     }
 
-    public void Draw(SpriteBatch spriteBatch)
+    public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
     {
         foreach (var card in _cards)
-            card.Draw(spriteBatch);
+            card.Draw(gameTime, spriteBatch);
     }
 }

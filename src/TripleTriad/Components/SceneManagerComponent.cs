@@ -42,7 +42,7 @@ public sealed class SceneManagerComponent(
     {
         graphicsDevice.Clear(Color.Plum);
         spriteBatch.Begin(transformMatrix: camera.GetViewMatrix());
-        ActiveScene.Draw(spriteBatch);
+        ActiveScene.Draw(gameTime, spriteBatch);
         spriteBatch.End();
     }
 }

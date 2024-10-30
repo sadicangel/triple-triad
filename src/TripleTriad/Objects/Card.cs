@@ -1,4 +1,5 @@
-﻿using TripleTriad.Core;
+﻿using MonoGame.Extended.Tweening;
+using TripleTriad.Core;
 
 namespace TripleTriad.Objects;
 
@@ -11,45 +12,120 @@ public sealed class Card
     private readonly Texture2DRegion _fill;
     private readonly Texture2DRegion _back;
 
-    private readonly Texture2DRegion _left;
-    private readonly Texture2DRegion _up;
-    private readonly Texture2DRegion _right;
-    private readonly Texture2DRegion _down;
+    private readonly Texture2DRegion _w;
+    private readonly Texture2DRegion _n;
+    private readonly Texture2DRegion _e;
+    private readonly Texture2DRegion _s;
 
-    private readonly Texture2DRegion _element;
+    private readonly Texture2DRegion _t;
+
+    private readonly FlipAnimation _flipAnimation;
 
     public Card(CardData data, Texture2DAtlas atlas)
     {
         _data = data;
         _atlas = atlas;
 
-        _card = _atlas.GetRegion(_data.Number - 1);
-        _fill = _atlas.GetRegion("card_fill");
-        _back = _atlas.GetRegion("card_back");
+        _card = _atlas.GetRegion($"card_{_data.Number}");
+        _back = _atlas.GetRegion("fill_0");
+        _fill = _atlas.GetRegion("fill_1");
 
-        _left = _atlas.GetRegion($"number_{_data.Left:X1}");
-        _up = _atlas.GetRegion($"number_{_data.Up:X1}");
-        _right = _atlas.GetRegion($"number_{_data.Right:X1}");
-        _down = _atlas.GetRegion($"number_{_data.Down:X1}");
-
-        _element = _atlas.GetRegion($"element_{(int)_data.Element:X1}");
+        _w = _atlas.GetRegion($"val_W_{_data.W:X1}");
+        _n = _atlas.GetRegion($"val_N_{_data.N:X1}");
+        _e = _atlas.GetRegion($"val_E_{_data.E:X1}");
+        _s = _atlas.GetRegion($"val_S_{_data.S:X1}");
+        _t = _atlas.GetRegion($"elem_{_data.Element}");
 
         // TODO: Probably assign this through an enum instead.
         Color = (_data.Number % 2 == 0 ? Color.DarkRed : Color.DarkBlue) with { A = 64 };
+
+        _flipAnimation = new FlipAnimation(this);
     }
 
     public Vector2 Position { get; set; }
 
+    public Vector2 Scale { get; set; } = Vector2.One;
+
     public Color Color { get; set; }
 
-    public void Draw(SpriteBatch spriteBatch)
+    public Vector2 Origin => new(_fill.Size.Width * .5f, _fill.Size.Height * .5f);
+
+    public float LayerDepth { get; set; } = 0f;
+
+    public Rectangle Border => _fill.Bounds with { Location = Position.ToPoint() };
+
+    public void Flip()
     {
-        spriteBatch.Draw(_fill, Position, Color);
-        spriteBatch.Draw(_card, Position, Color.White);
-        spriteBatch.Draw(_left, Position + new Vector2(16, 48), Color.White);
-        spriteBatch.Draw(_up, Position + new Vector2(32, 16), Color.White);
-        spriteBatch.Draw(_right, Position + new Vector2(48, 48), Color.White);
-        spriteBatch.Draw(_down, Position + new Vector2(32, 80), Color.White);
-        spriteBatch.Draw(_element, Position + new Vector2(200, 24), Color.White);
+        _flipAnimation.Animate();
+    }
+
+    public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
+    {
+        _flipAnimation.Update(gameTime);
+
+        var position = Position + Origin;
+
+        if (_flipAnimation.IsFlipped is false)
+        {
+            spriteBatch.Draw(_fill, position, Color, 0f, Origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(_card, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(_w, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(_n, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(_e, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(_s, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(_t, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+        }
+        else
+        {
+            spriteBatch.Draw(_back, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+        }
+    }
+
+    private sealed class FlipAnimation(Card card)
+    {
+        private readonly Tweener _tweener = new();
+        private bool _isAnimating;
+
+        public bool IsFlipped { get; private set; }
+
+        public void Update(GameTime gameTime)
+        {
+            _tweener.Update(gameTime.GetElapsedSeconds());
+        }
+
+        public void Animate()
+        {
+            if (!_isAnimating)
+            {
+                _isAnimating = true;
+                _tweener
+                    .TweenTo(card, static card => card.Scale, new Vector2(0f, 1.25f), .15f)
+                    .Easing(EasingFunctions.SineIn)
+                    .OnEnd(_ =>
+                    {
+                        IsFlipped = true;
+                        _tweener
+                            .TweenTo(card, static card => card.Scale, new Vector2(1f, 1.25f), .15f)
+                            .Easing(EasingFunctions.SineOut)
+                            .OnEnd(_ =>
+                            {
+                                _tweener
+                                    .TweenTo(card, static card => card.Scale, new Vector2(0f, 1.25f), .15f)
+                                    .Easing(EasingFunctions.SineIn)
+                                    .OnEnd(_ =>
+                                    {
+                                        IsFlipped = false;
+                                        _tweener
+                                            .TweenTo(card, static card => card.Scale, new Vector2(1f, 1), .15f)
+                                            .Easing(EasingFunctions.SineOut)
+                                            .OnEnd(_ =>
+                                            {
+                                                _isAnimating = false;
+                                            });
+                                    });
+                            });
+                    });
+            }
+        }
     }
 }

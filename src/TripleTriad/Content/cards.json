@@ -5,10 +5,10 @@
     "number": 1,
     "tier": 1,
     "element": "None",
-    "left": 1,
-    "up": 1,
-    "right": 4,
-    "down": 5
+    "w": 1,
+    "n": 1,
+    "e": 4,
+    "s": 5
   },
   {
     "name": "Fungar",
@@ -16,10 +16,10 @@
     "number": 2,
     "tier": 1,
     "element": "None",
-    "left": 3,
-    "up": 5,
-    "right": 1,
-    "down": 1
+    "w": 3,
+    "n": 5,
+    "e": 1,
+    "s": 1
   },
   {
     "name": "Bite Bug",
@@ -27,10 +27,10 @@
     "number": 3,
     "tier": 1,
     "element": "None",
-    "left": 5,
-    "up": 1,
-    "right": 3,
-    "down": 3
+    "w": 5,
+    "n": 1,
+    "e": 3,
+    "s": 3
   },
   {
     "name": "Red Bat",
@@ -38,10 +38,10 @@
     "number": 4,
     "tier": 1,
     "element": "None",
-    "left": 2,
-    "up": 6,
-    "right": 1,
-    "down": 1
+    "w": 2,
+    "n": 6,
+    "e": 1,
+    "s": 1
   },
   {
     "name": "Blobra",
@@ -49,10 +49,10 @@
     "number": 5,
     "tier": 1,
     "element": "None",
-    "left": 5,
-    "up": 2,
-    "right": 3,
-    "down": 1
+    "w": 5,
+    "n": 2,
+    "e": 3,
+    "s": 1
   },
   {
     "name": "Gayla",
@@ -60,10 +60,10 @@
     "number": 6,
     "tier": 1,
     "element": "Thunder",
-    "left": 4,
-    "up": 2,
-    "right": 1,
-    "down": 4
+    "w": 4,
+    "n": 2,
+    "e": 1,
+    "s": 4
   },
   {
     "name": "Gesper",
@@ -71,10 +71,10 @@
     "number": 7,
     "tier": 1,
     "element": "None",
-    "left": 1,
-    "up": 1,
-    "right": 5,
-    "down": 4
+    "w": 1,
+    "n": 1,
+    "e": 5,
+    "s": 4
   },
   {
     "name": "Fastitocalon-F",
@@ -82,10 +82,10 @@
     "number": 8,
     "tier": 1,
     "element": "Earth",
-    "left": 1,
-    "up": 3,
-    "right": 5,
-    "down": 2
+    "w": 1,
+    "n": 3,
+    "e": 5,
+    "s": 2
   },
   {
     "name": "Blood Soul",
@@ -93,10 +93,10 @@
     "number": 9,
     "tier": 1,
     "element": "None",
-    "left": 1,
-    "up": 2,
-    "right": 1,
-    "down": 6
+    "w": 1,
+    "n": 2,
+    "e": 1,
+    "s": 6
   },
   {
     "name": "Caterchipillar",
@@ -104,10 +104,10 @@
     "number": 10,
     "tier": 1,
     "element": "None",
-    "left": 3,
-    "up": 4,
-    "right": 2,
-    "down": 4
+    "w": 3,
+    "n": 4,
+    "e": 2,
+    "s": 4
   },
   {
     "name": "Cockatrice",
@@ -115,10 +115,10 @@
     "number": 11,
     "tier": 1,
     "element": "Thunder",
-    "left": 6,
-    "up": 6,
-    "right": 1,
-    "down": 2
+    "w": 6,
+    "n": 6,
+    "e": 1,
+    "s": 2
   },
   {
     "name": "Grat",
@@ -126,10 +126,10 @@
     "number": 12,
     "tier": 2,
     "element": "None",
-    "left": 1,
-    "up": 7,
-    "right": 1,
-    "down": 3
+    "w": 1,
+    "n": 7,
+    "e": 1,
+    "s": 3
   },
   {
     "name": "Buel",
@@ -137,10 +137,10 @@
     "number": 13,
     "tier": 2,
     "element": "None",
-    "left": 3,
-    "up": 6,
-    "right": 2,
-    "down": 2
+    "w": 3,
+    "n": 6,
+    "e": 2,
+    "s": 2
   },
   {
     "name": "Mesmerize",
@@ -148,10 +148,10 @@
     "number": 14,
     "tier": 2,
     "element": "None",
-    "left": 4,
-    "up": 5,
-    "right": 3,
-    "down": 3
+    "w": 4,
+    "n": 5,
+    "e": 3,
+    "s": 3
   },
   {
     "name": "Glacial Eye",
@@ -159,10 +159,10 @@
     "number": 15,
     "tier": 2,
     "element": "Ice",
-    "left": 3,
-    "up": 6,
-    "right": 1,
-    "down": 4
+    "w": 3,
+    "n": 6,
+    "e": 1,
+    "s": 4
   },
   {
     "name": "Belhelmel",
@@ -170,10 +170,10 @@
     "number": 16,
     "tier": 2,
     "element": "None",
-    "left": 3,
-    "up": 3,
-    "right": 4,
-    "down": 5
+    "w": 3,
+    "n": 3,
+    "e": 4,
+    "s": 5
   },
   {
     "name": "Thrustaevis",
@@ -181,10 +181,10 @@
     "number": 17,
     "tier": 2,
     "element": "Wind",
-    "left": 5,
-    "up": 5,
-    "right": 3,
-    "down": 2
+    "w": 5,
+    "n": 5,
+    "e": 3,
+    "s": 2
   },
   {
     "name": "Anacondaur",
@@ -192,10 +192,10 @@
     "number": 18,
     "tier": 2,
     "element": "Poison",
-    "left": 5,
-    "up": 5,
-    "right": 1,
-    "down": 3
+    "w": 5,
+    "n": 5,
+    "e": 1,
+    "s": 3
   },
   {
     "name": "Creeps",
@@ -203,10 +203,10 @@
     "number": 19,
     "tier": 2,
     "element": "Thunder",
-    "left": 2,
-    "up": 5,
-    "right": 2,
-    "down": 5
+    "w": 2,
+    "n": 5,
+    "e": 2,
+    "s": 5
   },
   {
     "name": "Grendel",
@@ -214,10 +214,10 @@
     "number": 20,
     "tier": 2,
     "element": "Thunder",
-    "left": 2,
-    "up": 4,
-    "right": 4,
-    "down": 5
+    "w": 2,
+    "n": 4,
+    "e": 4,
+    "s": 5
   },
   {
     "name": "Jelleye",
@@ -225,10 +225,10 @@
     "number": 21,
     "tier": 2,
     "element": "None",
-    "left": 7,
-    "up": 3,
-    "right": 2,
-    "down": 1
+    "w": 7,
+    "n": 3,
+    "e": 2,
+    "s": 1
   },
   {
     "name": "Grand Mantis",
@@ -236,10 +236,10 @@
     "number": 22,
     "tier": 2,
     "element": "None",
-    "left": 3,
-    "up": 5,
-    "right": 2,
-    "down": 5
+    "w": 3,
+    "n": 5,
+    "e": 2,
+    "s": 5
   },
   {
     "name": "Forbidden",
@@ -247,10 +247,10 @@
     "number": 23,
     "tier": 3,
     "element": "None",
-    "left": 2,
-    "up": 6,
-    "right": 6,
-    "down": 3
+    "w": 2,
+    "n": 6,
+    "e": 6,
+    "s": 3
   },
   {
     "name": "Armadodo",
@@ -258,10 +258,10 @@
     "number": 24,
     "tier": 3,
     "element": "Earth",
-    "left": 6,
-    "up": 6,
-    "right": 3,
-    "down": 1
+    "w": 6,
+    "n": 6,
+    "e": 3,
+    "s": 1
   },
   {
     "name": "TriFace",
@@ -269,10 +269,10 @@
     "number": 25,
     "tier": 3,
     "element": "Poison",
-    "left": 5,
-    "up": 3,
-    "right": 5,
-    "down": 5
+    "w": 5,
+    "n": 3,
+    "e": 5,
+    "s": 5
   },
   {
     "name": "Fastitcalon",
@@ -280,10 +280,10 @@
     "number": 26,
     "tier": 3,
     "element": "Earth",
-    "left": 3,
-    "up": 7,
-    "right": 5,
-    "down": 1
+    "w": 3,
+    "n": 7,
+    "e": 5,
+    "s": 1
   },
   {
     "name": "Snow Lion",
@@ -291,10 +291,10 @@
     "number": 27,
     "tier": 3,
     "element": "Ice",
-    "left": 3,
-    "up": 7,
-    "right": 1,
-    "down": 5
+    "w": 3,
+    "n": 7,
+    "e": 1,
+    "s": 5
   },
   {
     "name": "Ochu",
@@ -302,10 +302,10 @@
     "number": 28,
     "tier": 3,
     "element": "None",
-    "left": 3,
-    "up": 5,
-    "right": 6,
-    "down": 3
+    "w": 3,
+    "n": 5,
+    "e": 6,
+    "s": 3
   },
   {
     "name": "SAM08G",
@@ -313,10 +313,10 @@
     "number": 29,
     "tier": 3,
     "element": "Fire",
-    "left": 4,
-    "up": 5,
-    "right": 6,
-    "down": 2
+    "w": 4,
+    "n": 5,
+    "e": 6,
+    "s": 2
   },
   {
     "name": "Death Claw",
@@ -324,10 +324,10 @@
     "number": 30,
     "tier": 3,
     "element": "Fire",
-    "left": 2,
-    "up": 4,
-    "right": 4,
-    "down": 7
+    "w": 2,
+    "n": 4,
+    "e": 4,
+    "s": 7
   },
   {
     "name": "Cactaur",
@@ -335,10 +335,10 @@
     "number": 31,
     "tier": 3,
     "element": "None",
-    "left": 3,
-    "up": 6,
-    "right": 2,
-    "down": 6
+    "w": 3,
+    "n": 6,
+    "e": 2,
+    "s": 6
   },
   {
     "name": "Tonberry",
@@ -346,10 +346,10 @@
     "number": 32,
     "tier": 3,
     "element": "None",
-    "left": 4,
-    "up": 3,
-    "right": 6,
-    "down": 4
+    "w": 4,
+    "n": 3,
+    "e": 6,
+    "s": 4
   },
   {
     "name": "Abyss Worm",
@@ -357,10 +357,10 @@
     "number": 33,
     "tier": 3,
     "element": "Earth",
-    "left": 5,
-    "up": 7,
-    "right": 2,
-    "down": 3
+    "w": 5,
+    "n": 7,
+    "e": 2,
+    "s": 3
   },
   {
     "name": "Turtapod",
@@ -368,10 +368,10 @@
     "number": 34,
     "tier": 4,
     "element": "None",
-    "left": 7,
-    "up": 2,
-    "right": 3,
-    "down": 6
+    "w": 7,
+    "n": 2,
+    "e": 3,
+    "s": 6
   },
   {
     "name": "Vysage",
@@ -379,10 +379,10 @@
     "number": 35,
     "tier": 4,
     "element": "None",
-    "left": 5,
-    "up": 6,
-    "right": 5,
-    "down": 4
+    "w": 5,
+    "n": 6,
+    "e": 5,
+    "s": 4
   },
   {
     "name": "T-Rexaur",
@@ -390,10 +390,10 @@
     "number": 36,
     "tier": 4,
     "element": "None",
-    "left": 7,
-    "up": 4,
-    "right": 6,
-    "down": 2
+    "w": 7,
+    "n": 4,
+    "e": 6,
+    "s": 2
   },
   {
     "name": "Bomb",
@@ -401,10 +401,10 @@
     "number": 37,
     "tier": 4,
     "element": "Fire",
-    "left": 3,
-    "up": 2,
-    "right": 7,
-    "down": 6
+    "w": 3,
+    "n": 2,
+    "e": 7,
+    "s": 6
   },
   {
     "name": "Blitz",
@@ -412,10 +412,10 @@
     "number": 38,
     "tier": 4,
     "element": "Thunder",
-    "left": 7,
-    "up": 1,
-    "right": 6,
-    "down": 4
+    "w": 7,
+    "n": 1,
+    "e": 6,
+    "s": 4
   },
   {
     "name": "Wendigo",
@@ -423,10 +423,10 @@
     "number": 39,
     "tier": 4,
     "element": "None",
-    "left": 6,
-    "up": 7,
-    "right": 3,
-    "down": 1
+    "w": 6,
+    "n": 7,
+    "e": 3,
+    "s": 1
   },
   {
     "name": "Torama",
@@ -434,10 +434,10 @@
     "number": 40,
     "tier": 4,
     "element": "None",
-    "left": 4,
-    "up": 7,
-    "right": 4,
-    "down": 4
+    "w": 4,
+    "n": 7,
+    "e": 4,
+    "s": 4
   },
   {
     "name": "Imp",
@@ -445,10 +445,10 @@
     "number": 41,
     "tier": 4,
     "element": "None",
-    "left": 6,
-    "up": 3,
-    "right": 7,
-    "down": 3
+    "w": 6,
+    "n": 3,
+    "e": 7,
+    "s": 3
   },
   {
     "name": "Blue Dragon",
@@ -456,10 +456,10 @@
     "number": 42,
     "tier": 4,
     "element": "Poison",
-    "left": 3,
-    "up": 6,
-    "right": 2,
-    "down": 7
+    "w": 3,
+    "n": 6,
+    "e": 2,
+    "s": 7
   },
   {
     "name": "Adamantoise",
@@ -467,10 +467,10 @@
     "number": 43,
     "tier": 4,
     "element": "Earth",
-    "left": 6,
-    "up": 4,
-    "right": 5,
-    "down": 5
+    "w": 6,
+    "n": 4,
+    "e": 5,
+    "s": 5
   },
   {
     "name": "Hexadragon",
@@ -478,10 +478,10 @@
     "number": 44,
     "tier": 4,
     "element": "Fire",
-    "left": 3,
-    "up": 7,
-    "right": 5,
-    "down": 4
+    "w": 3,
+    "n": 7,
+    "e": 5,
+    "s": 4
   },
   {
     "name": "Iron Giant",
@@ -489,10 +489,10 @@
     "number": 45,
     "tier": 5,
     "element": "None",
-    "left": 5,
-    "up": 6,
-    "right": 5,
-    "down": 6
+    "w": 5,
+    "n": 6,
+    "e": 5,
+    "s": 6
   },
   {
     "name": "Behemoth",
@@ -500,10 +500,10 @@
     "number": 46,
     "tier": 5,
     "element": "None",
-    "left": 7,
-    "up": 3,
-    "right": 6,
-    "down": 5
+    "w": 7,
+    "n": 3,
+    "e": 6,
+    "s": 5
   },
   {
     "name": "Chimera",
@@ -511,10 +511,10 @@
     "number": 47,
     "tier": 5,
     "element": "Water",
-    "left": 3,
-    "up": 7,
-    "right": 6,
-    "down": 5
+    "w": 3,
+    "n": 7,
+    "e": 6,
+    "s": 5
   },
   {
     "name": "PuPu",
@@ -522,10 +522,10 @@
     "number": 48,
     "tier": 5,
     "element": "None",
-    "left": 1,
-    "up": 3,
-    "right": 10,
-    "down": 2
+    "w": 1,
+    "n": 3,
+    "e": 10,
+    "s": 2
   },
   {
     "name": "Elastiod",
@@ -533,10 +533,10 @@
     "number": 49,
     "tier": 5,
     "element": "None",
-    "left": 7,
-    "up": 6,
-    "right": 2,
-    "down": 6
+    "w": 7,
+    "n": 6,
+    "e": 2,
+    "s": 6
   },
   {
     "name": "GIM47N",
@@ -544,10 +544,10 @@
     "number": 50,
     "tier": 5,
     "element": "None",
-    "left": 4,
-    "up": 5,
-    "right": 5,
-    "down": 7
+    "w": 4,
+    "n": 5,
+    "e": 5,
+    "s": 7
   },
   {
     "name": "Malboro",
@@ -555,10 +555,10 @@
     "number": 51,
     "tier": 5,
     "element": "Poison",
-    "left": 2,
-    "up": 7,
-    "right": 7,
-    "down": 4
+    "w": 2,
+    "n": 7,
+    "e": 7,
+    "s": 4
   },
   {
     "name": "Ruby Dragon",
@@ -566,10 +566,10 @@
     "number": 52,
     "tier": 5,
     "element": "Fire",
-    "left": 4,
-    "up": 7,
-    "right": 2,
-    "down": 7
+    "w": 4,
+    "n": 7,
+    "e": 2,
+    "s": 7
   },
   {
     "name": "Elnoyle",
@@ -577,10 +577,10 @@
     "number": 53,
     "tier": 5,
     "element": "None",
-    "left": 6,
-    "up": 5,
-    "right": 3,
-    "down": 7
+    "w": 6,
+    "n": 5,
+    "e": 3,
+    "s": 7
   },
   {
     "name": "Tonberry King",
@@ -588,10 +588,10 @@
     "number": 54,
     "tier": 5,
     "element": "None",
-    "left": 4,
-    "up": 4,
-    "right": 6,
-    "down": 7
+    "w": 4,
+    "n": 4,
+    "e": 6,
+    "s": 7
   },
   {
     "name": "Wedge, Biggs",
@@ -599,10 +599,10 @@
     "number": 55,
     "tier": 5,
     "element": "None",
-    "left": 7,
-    "up": 6,
-    "right": 6,
-    "down": 2
+    "w": 7,
+    "n": 6,
+    "e": 6,
+    "s": 2
   },
   {
     "name": "Fujin, Raijin",
@@ -610,10 +610,10 @@
     "number": 56,
     "tier": 6,
     "element": "None",
-    "left": 4,
-    "up": 2,
-    "right": 8,
-    "down": 8
+    "w": 4,
+    "n": 2,
+    "e": 8,
+    "s": 8
   },
   {
     "name": "Elvoret",
@@ -621,10 +621,10 @@
     "number": 57,
     "tier": 6,
     "element": "Wind",
-    "left": 4,
-    "up": 7,
-    "right": 8,
-    "down": 3
+    "w": 4,
+    "n": 7,
+    "e": 8,
+    "s": 3
   },
   {
     "name": "X-ATM092",
@@ -632,10 +632,10 @@
     "number": 58,
     "tier": 6,
     "element": "None",
-    "left": 3,
-    "up": 4,
-    "right": 8,
-    "down": 4
+    "w": 3,
+    "n": 4,
+    "e": 8,
+    "s": 4
   },
   {
     "name": "Grenaldo",
@@ -643,10 +643,10 @@
     "number": 59,
     "tier": 6,
     "element": "None",
-    "left": 5,
-    "up": 7,
-    "right": 2,
-    "down": 8
+    "w": 5,
+    "n": 7,
+    "e": 2,
+    "s": 8
   },
   {
     "name": "Gerogero",
@@ -654,10 +654,10 @@
     "number": 60,
     "tier": 6,
     "element": "Poison",
-    "left": 3,
-    "up": 1,
-    "right": 8,
-    "down": 8
+    "w": 3,
+    "n": 1,
+    "e": 8,
+    "s": 8
   },
   {
     "name": "Iguion",
@@ -665,10 +665,10 @@
     "number": 61,
     "tier": 6,
     "element": "None",
-    "left": 2,
-    "up": 8,
-    "right": 2,
-    "down": 8
+    "w": 2,
+    "n": 8,
+    "e": 2,
+    "s": 8
   },
   {
     "name": "Abadon",
@@ -676,10 +676,10 @@
     "number": 62,
     "tier": 6,
     "element": "None",
-    "left": 5,
-    "up": 6,
-    "right": 8,
-    "down": 4
+    "w": 5,
+    "n": 6,
+    "e": 8,
+    "s": 4
   },
   {
     "name": "Trauma",
@@ -687,10 +687,10 @@
     "number": 63,
     "tier": 6,
     "element": "None",
-    "left": 6,
-    "up": 4,
-    "right": 8,
-    "down": 5
+    "w": 6,
+    "n": 4,
+    "e": 8,
+    "s": 5
   },
   {
     "name": "Oilboyle",
@@ -698,10 +698,10 @@
     "number": 64,
     "tier": 6,
     "element": "None",
-    "left": 8,
-    "up": 1,
-    "right": 8,
-    "down": 4
+    "w": 8,
+    "n": 1,
+    "e": 8,
+    "s": 4
   },
   {
     "name": "Shumi Tribe",
@@ -709,10 +709,10 @@
     "number": 65,
     "tier": 6,
     "element": "None",
-    "left": 4,
-    "up": 6,
-    "right": 5,
-    "down": 8
+    "w": 4,
+    "n": 6,
+    "e": 5,
+    "s": 8
   },
   {
     "name": "Krysta",
@@ -720,10 +720,10 @@
     "number": 66,
     "tier": 6,
     "element": "None",
-    "left": 1,
-    "up": 7,
-    "right": 5,
-    "down": 8
+    "w": 1,
+    "n": 7,
+    "e": 5,
+    "s": 8
   },
   {
     "name": "Propagator",
@@ -731,10 +731,10 @@
     "number": 67,
     "tier": 7,
     "element": "None",
-    "left": 8,
-    "up": 8,
-    "right": 4,
-    "down": 4
+    "w": 8,
+    "n": 8,
+    "e": 4,
+    "s": 4
   },
   {
     "name": "Jumbo Cactaur",
@@ -742,10 +742,10 @@
     "number": 68,
     "tier": 7,
     "element": "None",
-    "left": 4,
-    "up": 8,
-    "right": 8,
-    "down": 4
+    "w": 4,
+    "n": 8,
+    "e": 8,
+    "s": 4
   },
   {
     "name": "Tri-Point",
@@ -753,10 +753,10 @@
     "number": 69,
     "tier": 7,
     "element": "Thunder",
-    "left": 8,
-    "up": 8,
-    "right": 5,
-    "down": 2
+    "w": 8,
+    "n": 8,
+    "e": 5,
+    "s": 2
   },
   {
     "name": "Gargantua",
@@ -764,10 +764,10 @@
     "number": 70,
     "tier": 7,
     "element": "None",
-    "left": 8,
-    "up": 5,
-    "right": 6,
-    "down": 6
+    "w": 8,
+    "n": 5,
+    "e": 6,
+    "s": 6
   },
   {
     "name": "Mobile Type 8",
@@ -775,10 +775,10 @@
     "number": 71,
     "tier": 7,
     "element": "None",
-    "left": 3,
-    "up": 8,
-    "right": 6,
-    "down": 7
+    "w": 3,
+    "n": 8,
+    "e": 6,
+    "s": 7
   },
   {
     "name": "Sphinxara",
@@ -786,10 +786,10 @@
     "number": 72,
     "tier": 7,
     "element": "None",
-    "left": 8,
-    "up": 8,
-    "right": 3,
-    "down": 5
+    "w": 8,
+    "n": 8,
+    "e": 3,
+    "s": 5
   },
   {
     "name": "Tiamat",
@@ -797,10 +797,10 @@
     "number": 73,
     "tier": 7,
     "element": "None",
-    "left": 4,
-    "up": 8,
-    "right": 8,
-    "down": 5
+    "w": 4,
+    "n": 8,
+    "e": 8,
+    "s": 5
   },
   {
     "name": "BGH251F2",
@@ -808,10 +808,10 @@
     "number": 74,
     "tier": 7,
     "element": "None",
-    "left": 5,
-    "up": 5,
-    "right": 7,
-    "down": 8
+    "w": 5,
+    "n": 5,
+    "e": 7,
+    "s": 8
   },
   {
     "name": "Red Giant",
@@ -819,10 +819,10 @@
     "number": 75,
     "tier": 7,
     "element": "None",
-    "left": 7,
-    "up": 6,
-    "right": 8,
-    "down": 4
+    "w": 7,
+    "n": 6,
+    "e": 8,
+    "s": 4
   },
   {
     "name": "Catoblepas",
@@ -830,10 +830,10 @@
     "number": 76,
     "tier": 7,
     "element": "None",
-    "left": 7,
-    "up": 1,
-    "right": 8,
-    "down": 7
+    "w": 7,
+    "n": 1,
+    "e": 8,
+    "s": 7
   },
   {
     "name": "Ultima Weapon",
@@ -841,10 +841,10 @@
     "number": 77,
     "tier": 7,
     "element": "None",
-    "left": 8,
-    "up": 7,
-    "right": 7,
-    "down": 2
+    "w": 8,
+    "n": 7,
+    "e": 7,
+    "s": 2
   },
   {
     "name": "Chubby Chocobo",
@@ -852,10 +852,10 @@
     "number": 78,
     "tier": 8,
     "element": "None",
-    "left": 9,
-    "up": 4,
-    "right": 4,
-    "down": 8
+    "w": 9,
+    "n": 4,
+    "e": 4,
+    "s": 8
   },
   {
     "name": "Angelo",
@@ -863,10 +863,10 @@
     "number": 79,
     "tier": 8,
     "element": "None",
-    "left": 3,
-    "up": 9,
-    "right": 6,
-    "down": 7
+    "w": 3,
+    "n": 9,
+    "e": 6,
+    "s": 7
   },
   {
     "name": "Gilgamesh",
@@ -874,10 +874,10 @@
     "number": 80,
     "tier": 8,
     "element": "None",
-    "left": 6,
-    "up": 3,
-    "right": 7,
-    "down": 9
+    "w": 6,
+    "n": 3,
+    "e": 7,
+    "s": 9
   },
   {
     "name": "MinMog",
@@ -885,10 +885,10 @@
     "number": 81,
     "tier": 8,
     "element": "None",
-    "left": 2,
-    "up": 9,
-    "right": 3,
-    "down": 9
+    "w": 2,
+    "n": 9,
+    "e": 3,
+    "s": 9
   },
   {
     "name": "Chicobo",
@@ -896,10 +896,10 @@
     "number": 82,
     "tier": 8,
     "element": "None",
-    "left": 4,
-    "up": 9,
-    "right": 4,
-    "down": 8
+    "w": 4,
+    "n": 9,
+    "e": 4,
+    "s": 8
   },
   {
     "name": "Quezacotl",
@@ -907,10 +907,10 @@
     "number": 83,
     "tier": 8,
     "element": "Thunder",
-    "left": 4,
-    "up": 2,
-    "right": 9,
-    "down": 9
+    "w": 4,
+    "n": 2,
+    "e": 9,
+    "s": 9
   },
   {
     "name": "Shiva",
@@ -918,10 +918,10 @@
     "number": 84,
     "tier": 8,
     "element": "Ice",
-    "left": 9,
-    "up": 6,
-    "right": 7,
-    "down": 4
+    "w": 9,
+    "n": 6,
+    "e": 7,
+    "s": 4
   },
   {
     "name": "Ifrit",
@@ -929,10 +929,10 @@
     "number": 85,
     "tier": 8,
     "element": "Fire",
-    "left": 8,
-    "up": 9,
-    "right": 6,
-    "down": 2
+    "w": 8,
+    "n": 9,
+    "e": 6,
+    "s": 2
   },
   {
     "name": "Siren",
@@ -940,10 +940,10 @@
     "number": 86,
     "tier": 8,
     "element": "None",
-    "left": 8,
-    "up": 9,
-    "right": 6,
-    "down": 2
+    "w": 8,
+    "n": 9,
+    "e": 6,
+    "s": 2
   },
   {
     "name": "Sacred",
@@ -951,10 +951,10 @@
     "number": 87,
     "tier": 8,
     "element": "Earth",
-    "left": 9,
-    "up": 5,
-    "right": 1,
-    "down": 9
+    "w": 9,
+    "n": 5,
+    "e": 1,
+    "s": 9
   },
   {
     "name": "Minotaur",
@@ -962,10 +962,10 @@
     "number": 88,
     "tier": 8,
     "element": "Earth",
-    "left": 5,
-    "up": 9,
-    "right": 9,
-    "down": 2
+    "w": 5,
+    "n": 9,
+    "e": 9,
+    "s": 2
   },
   {
     "name": "Carbuncle",
@@ -973,10 +973,10 @@
     "number": 89,
     "tier": 9,
     "element": "None",
-    "left": 4,
-    "up": 8,
-    "right": 4,
-    "down": 10
+    "w": 4,
+    "n": 8,
+    "e": 4,
+    "s": 10
   },
   {
     "name": "Diablos",
@@ -984,10 +984,10 @@
     "number": 90,
     "tier": 9,
     "element": "None",
-    "left": 3,
-    "up": 5,
-    "right": 10,
-    "down": 8
+    "w": 3,
+    "n": 5,
+    "e": 10,
+    "s": 8
   },
   {
     "name": "Leviathan",
@@ -995,10 +995,10 @@
     "number": 91,
     "tier": 9,
     "element": "Water",
-    "left": 7,
-    "up": 7,
-    "right": 10,
-    "down": 1
+    "w": 7,
+    "n": 7,
+    "e": 10,
+    "s": 1
   },
   {
     "name": "Odin",
@@ -1006,10 +1006,10 @@
     "number": 92,
     "tier": 9,
     "element": "None",
-    "left": 5,
-    "up": 8,
-    "right": 10,
-    "down": 3
+    "w": 5,
+    "n": 8,
+    "e": 10,
+    "s": 3
   },
   {
     "name": "Pandemonia",
@@ -1017,10 +1017,10 @@
     "number": 93,
     "tier": 9,
     "element": "Wind",
-    "left": 7,
-    "up": 10,
-    "right": 1,
-    "down": 7
+    "w": 7,
+    "n": 10,
+    "e": 1,
+    "s": 7
   },
   {
     "name": "Cerberus",
@@ -1028,10 +1028,10 @@
     "number": 94,
     "tier": 9,
     "element": "None",
-    "left": 10,
-    "up": 7,
-    "right": 4,
-    "down": 6
+    "w": 10,
+    "n": 7,
+    "e": 4,
+    "s": 6
   },
   {
     "name": "Alexander",
@@ -1039,10 +1039,10 @@
     "number": 95,
     "tier": 9,
     "element": "Holy",
-    "left": 2,
-    "up": 9,
-    "right": 10,
-    "down": 4
+    "w": 2,
+    "n": 9,
+    "e": 10,
+    "s": 4
   },
   {
     "name": "Phoenix",
@@ -1050,10 +1050,10 @@
     "number": 96,
     "tier": 9,
     "element": "Fire",
-    "left": 10,
-    "up": 7,
-    "right": 2,
-    "down": 7
+    "w": 10,
+    "n": 7,
+    "e": 2,
+    "s": 7
   },
   {
     "name": "Bahumut",
@@ -1061,10 +1061,10 @@
     "number": 97,
     "tier": 9,
     "element": "None",
-    "left": 6,
-    "up": 10,
-    "right": 8,
-    "down": 2
+    "w": 6,
+    "n": 10,
+    "e": 8,
+    "s": 2
   },
   {
     "name": "Doomtrain",
@@ -1072,10 +1072,10 @@
     "number": 98,
     "tier": 9,
     "element": "Poison",
-    "left": 10,
-    "up": 3,
-    "right": 1,
-    "down": 10
+    "w": 10,
+    "n": 3,
+    "e": 1,
+    "s": 10
   },
   {
     "name": "Eden",
@@ -1083,10 +1083,10 @@
     "number": 99,
     "tier": 9,
     "element": "None",
-    "left": 10,
-    "up": 4,
-    "right": 4,
-    "down": 9
+    "w": 10,
+    "n": 4,
+    "e": 4,
+    "s": 9
   },
   {
     "name": "Ward",
@@ -1094,10 +1094,10 @@
     "number": 100,
     "tier": 10,
     "element": "None",
-    "left": 8,
-    "up": 10,
-    "right": 7,
-    "down": 2
+    "w": 8,
+    "n": 10,
+    "e": 7,
+    "s": 2
   },
   {
     "name": "Kiros",
@@ -1105,10 +1105,10 @@
     "number": 101,
     "tier": 10,
     "element": "None",
-    "left": 10,
-    "up": 6,
-    "right": 7,
-    "down": 6
+    "w": 10,
+    "n": 6,
+    "e": 7,
+    "s": 6
   },
   {
     "name": "Laguna",
@@ -1116,10 +1116,10 @@
     "number": 102,
     "tier": 10,
     "element": "None",
-    "left": 9,
-    "up": 5,
-    "right": 10,
-    "down": 3
+    "w": 9,
+    "n": 5,
+    "e": 10,
+    "s": 3
   },
   {
     "name": "Selphie",
@@ -1127,10 +1127,10 @@
     "number": 103,
     "tier": 10,
     "element": "None",
-    "left": 6,
-    "up": 10,
-    "right": 8,
-    "down": 4
+    "w": 6,
+    "n": 10,
+    "e": 8,
+    "s": 4
   },
   {
     "name": "Quistis",
@@ -1138,10 +1138,10 @@
     "number": 104,
     "tier": 10,
     "element": "None",
-    "left": 2,
-    "up": 9,
-    "right": 6,
-    "down": 10
+    "w": 2,
+    "n": 9,
+    "e": 6,
+    "s": 10
   },
   {
     "name": "Irvine",
@@ -1149,10 +1149,10 @@
     "number": 105,
     "tier": 10,
     "element": "None",
-    "left": 10,
-    "up": 2,
-    "right": 6,
-    "down": 9
+    "w": 10,
+    "n": 2,
+    "e": 6,
+    "s": 9
   },
   {
     "name": "Zell",
@@ -1160,10 +1160,10 @@
     "number": 106,
     "tier": 10,
     "element": "None",
-    "left": 6,
-    "up": 8,
-    "right": 5,
-    "down": 10
+    "w": 6,
+    "n": 8,
+    "e": 5,
+    "s": 10
   },
   {
     "name": "Rinoa",
@@ -1171,10 +1171,10 @@
     "number": 107,
     "tier": 10,
     "element": "None",
-    "left": 10,
-    "up": 4,
-    "right": 10,
-    "down": 2
+    "w": 10,
+    "n": 4,
+    "e": 10,
+    "s": 2
   },
   {
     "name": "Edea",
@@ -1182,10 +1182,10 @@
     "number": 108,
     "tier": 10,
     "element": "None",
-    "left": 3,
-    "up": 10,
-    "right": 10,
-    "down": 3
+    "w": 3,
+    "n": 10,
+    "e": 10,
+    "s": 3
   },
   {
     "name": "Seifer",
@@ -1193,10 +1193,10 @@
     "number": 109,
     "tier": 10,
     "element": "None",
-    "left": 4,
-    "up": 6,
-    "right": 9,
-    "down": 10
+    "w": 4,
+    "n": 6,
+    "e": 9,
+    "s": 10
   },
   {
     "name": "Squall",
@@ -1204,9 +1204,9 @@
     "number": 110,
     "tier": 10,
     "element": "None",
-    "left": 6,
-    "up": 10,
-    "right": 4,
-    "down": 9
+    "w": 6,
+    "n": 10,
+    "e": 4,
+    "s": 9
   }
 ]

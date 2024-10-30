@@ -3,5 +3,5 @@
 public interface IScene
 {
     void Update(GameTime gameTime);
-    void Draw(SpriteBatch spriteBatch);
+    void Draw(GameTime gameTime, SpriteBatch spriteBatch);
 }

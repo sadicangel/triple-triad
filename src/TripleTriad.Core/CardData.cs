@@ -9,10 +9,10 @@ public sealed record class CardData(
     int Number,
     int Tier,
     Element Element,
-    int Left,
-    int Up,
-    int Right,
-    int Down)
+    int W,
+    int N,
+    int E,
+    int S)
 {
     public Guid Guid { get; init; } = CardId.Create(Edition, Number);
 }
