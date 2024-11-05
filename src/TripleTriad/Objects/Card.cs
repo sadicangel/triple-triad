@@ -1,9 +1,9 @@
-﻿using MonoGame.Extended.Tweening;
+﻿using TripleTriad.Animations;
 using TripleTriad.Core;
 
 namespace TripleTriad.Objects;
 
-public sealed class Card
+public sealed class Card : IAnimationTarget
 {
     private readonly CardData _data;
     private readonly Texture2DAtlas _atlas;
@@ -19,7 +19,7 @@ public sealed class Card
 
     private readonly Texture2DRegion _t;
 
-    private readonly FlipAnimation _flipAnimation;
+    private readonly FlipAnimation<Card> _flipAnimation;
 
     public Card(CardData data, Texture2DAtlas atlas)
     {
@@ -39,7 +39,7 @@ public sealed class Card
         // TODO: Probably assign this through an enum instead.
         Color = (_data.Number % 2 == 0 ? Color.DarkRed : Color.DarkBlue) with { A = 64 };
 
-        _flipAnimation = new FlipAnimation(this);
+        _flipAnimation = new FlipAnimation<Card>(this);
     }
 
     public Vector2 Position { get; set; }
@@ -54,10 +54,11 @@ public sealed class Card
 
     public Rectangle Border => _fill.Bounds with { Location = Position.ToPoint() };
 
-    public void Flip()
-    {
-        _flipAnimation.Animate();
-    }
+    public bool IsFlipped => _flipAnimation.IsFlipped;
+
+    public void Flip180() => _flipAnimation.Flip180();
+
+    public void Flip360() => _flipAnimation.Flip360();
 
     public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
     {
@@ -65,7 +66,7 @@ public sealed class Card
 
         var position = Position + Origin;
 
-        if (_flipAnimation.IsFlipped is false)
+        if (IsFlipped is false)
         {
             spriteBatch.Draw(_fill, position, Color, 0f, Origin, Scale, SpriteEffects.None, 0f);
             spriteBatch.Draw(_card, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
@@ -78,54 +79,6 @@ public sealed class Card
         else
         {
             spriteBatch.Draw(_back, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
-        }
-    }
-
-    private sealed class FlipAnimation(Card card)
-    {
-        private readonly Tweener _tweener = new();
-        private bool _isAnimating;
-
-        public bool IsFlipped { get; private set; }
-
-        public void Update(GameTime gameTime)
-        {
-            _tweener.Update(gameTime.GetElapsedSeconds());
-        }
-
-        public void Animate()
-        {
-            if (!_isAnimating)
-            {
-                _isAnimating = true;
-                _tweener
-                    .TweenTo(card, static card => card.Scale, new Vector2(0f, 1.25f), .15f)
-                    .Easing(EasingFunctions.SineIn)
-                    .OnEnd(_ =>
-                    {
-                        IsFlipped = true;
-                        _tweener
-                            .TweenTo(card, static card => card.Scale, new Vector2(1f, 1.25f), .15f)
-                            .Easing(EasingFunctions.SineOut)
-                            .OnEnd(_ =>
-                            {
-                                _tweener
-                                    .TweenTo(card, static card => card.Scale, new Vector2(0f, 1.25f), .15f)
-                                    .Easing(EasingFunctions.SineIn)
-                                    .OnEnd(_ =>
-                                    {
-                                        IsFlipped = false;
-                                        _tweener
-                                            .TweenTo(card, static card => card.Scale, new Vector2(1f, 1), .15f)
-                                            .Easing(EasingFunctions.SineOut)
-                                            .OnEnd(_ =>
-                                            {
-                                                _isAnimating = false;
-                                            });
-                                    });
-                            });
-                    });
-            }
         }
     }
 }

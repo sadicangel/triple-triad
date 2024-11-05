@@ -42,7 +42,7 @@ public sealed class GameScene(
             {
                 if (_cards.FirstOrDefault(card => card.Border.Contains(inputListener.MouseState.Position)) is Card card)
                 {
-                    card.Flip();
+                    card.Flip180();
                 }
             }
         }
