@@ -41,8 +41,8 @@ public sealed class SceneManagerComponent(
     public override void Draw(GameTime gameTime)
     {
         graphicsDevice.Clear(Color.Plum);
-        spriteBatch.Begin(transformMatrix: camera.GetViewMatrix());
-        ActiveScene.Draw(gameTime, spriteBatch);
+        spriteBatch.Begin(sortMode: SpriteSortMode.BackToFront, transformMatrix: camera.GetViewMatrix());
+        ActiveScene.Draw(spriteBatch);
         spriteBatch.End();
     }
 }

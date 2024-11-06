@@ -1,9 +1,8 @@
-﻿using TripleTriad.Animations;
-using TripleTriad.Core;
+﻿using TripleTriad.Core;
 
 namespace TripleTriad.Objects;
 
-public sealed class Card : IAnimationTarget
+public sealed class Card
 {
     private readonly CardData _data;
     private readonly Texture2DAtlas _atlas;
@@ -19,8 +18,6 @@ public sealed class Card : IAnimationTarget
 
     private readonly Texture2DRegion _t;
 
-    private readonly FlipAnimation<Card> _flipAnimation;
-
     public Card(CardData data, Texture2DAtlas atlas)
     {
         _data = data;
@@ -35,11 +32,6 @@ public sealed class Card : IAnimationTarget
         _e = _atlas.GetRegion($"val_E_{_data.E:X1}");
         _s = _atlas.GetRegion($"val_S_{_data.S:X1}");
         _t = _atlas.GetRegion($"elem_{_data.Element}");
-
-        // TODO: Probably assign this through an enum instead.
-        Color = (_data.Number % 2 == 0 ? Color.DarkRed : Color.DarkBlue) with { A = 64 };
-
-        _flipAnimation = new FlipAnimation<Card>(this);
     }
 
     public Vector2 Position { get; set; }
@@ -50,35 +42,35 @@ public sealed class Card : IAnimationTarget
 
     public Vector2 Origin => new(_fill.Size.Width * .5f, _fill.Size.Height * .5f);
 
-    public float LayerDepth { get; set; } = 0f;
+    public float LayerDepth { get; set; } = 1f;
 
     public Rectangle Border => _fill.Bounds with { Location = Position.ToPoint() };
 
-    public bool IsFlipped => _flipAnimation.IsFlipped;
+    public bool IsInUse { get; set; }
 
-    public void Flip180() => _flipAnimation.Flip180();
+    public bool IsFlipped { get; set; }
 
-    public void Flip360() => _flipAnimation.Flip360();
+    public bool IsHighlighted { get; set; }
 
-    public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
+    public void Draw(SpriteBatch spriteBatch)
     {
-        _flipAnimation.Update(gameTime);
-
         var position = Position + Origin;
 
         if (IsFlipped is false)
         {
-            spriteBatch.Draw(_fill, position, Color, 0f, Origin, Scale, SpriteEffects.None, 0f);
-            spriteBatch.Draw(_card, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
-            spriteBatch.Draw(_w, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
-            spriteBatch.Draw(_n, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
-            spriteBatch.Draw(_e, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
-            spriteBatch.Draw(_s, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
-            spriteBatch.Draw(_t, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(_fill, position, Color, 0f, Origin, Scale, SpriteEffects.None, LayerDepth);
+            spriteBatch.Draw(_card, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, LayerDepth - .01f);
+            spriteBatch.Draw(_w, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, LayerDepth - .02f);
+            spriteBatch.Draw(_n, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, LayerDepth - .02f);
+            spriteBatch.Draw(_e, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, LayerDepth - .02f);
+            spriteBatch.Draw(_s, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, LayerDepth - .02f);
+            spriteBatch.Draw(_t, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, LayerDepth - .02f);
+            if (IsHighlighted)
+                spriteBatch.Draw(_fill, position, Color with { A = 128 }, 0f, Origin, Scale, SpriteEffects.None, LayerDepth - 0.005f);
         }
         else
         {
-            spriteBatch.Draw(_back, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(_back, position, Color.White, 0f, Origin, Scale, SpriteEffects.None, LayerDepth);
         }
     }
 }

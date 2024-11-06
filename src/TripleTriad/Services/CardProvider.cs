@@ -37,11 +37,22 @@ public sealed class CardProvider(ContentManager contentManager)
         return contentManager.Load<CardData[]>("cards.json", new JsonContentLoaderEx());
     }
 
-    public Card CreateCard(int number)
+    public Card CreateCard(int number, Vector2 position)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(number, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(number, 110);
 
-        return new Card(_cards[number - 1], _atlas);
+        return new Card(_cards[number - 1], _atlas)
+        {
+            Position = position
+        };
+    }
+
+    public Cell CreateCell(Vector2 position)
+    {
+        return new Cell(_atlas)
+        {
+            Position = position
+        };
     }
 }
