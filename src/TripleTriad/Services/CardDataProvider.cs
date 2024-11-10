@@ -54,8 +54,6 @@ public sealed class CardDataProvider
             .ToArray();
     }
 
-    public Card GetData(int number) => new(GetValues(number), GetTextures(number));
-
     public CardValues GetValues(int number) => _values[number - 1];
 
     public CardTextures GetTextures(int number) => _textures[number - 1];

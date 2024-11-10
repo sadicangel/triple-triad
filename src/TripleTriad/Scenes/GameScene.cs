@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using fennecs;
 using TripleTriad.Components;
+using TripleTriad.Components.Tags;
 using TripleTriad.Services;
 using TripleTriad.Systems;
 
@@ -27,18 +28,24 @@ public sealed class GameScene : Scene
 
         _world.Entity()
             .Add<Card>()
+            .Add<CardValues>(null!)
+            .Add<CardTextures>(null!)
+            .Add<CardState>()
             .Add<Transform>(new Transform() with { Scale = Vector2.One })
             .Add<Color>()
-            .Add<Border>()
             .Spawn(110);
 
         var i = 0;
-        _world.Query<Card, Transform, Color>().Stream().For((ref Card card, ref Transform transform, ref Color color) =>
+        _world
+            .Query<CardValues, CardTextures, CardState, Transform>()
+            .Has<Card>()
+            .Stream()
+            .For((ref CardValues values, ref CardTextures textures, ref CardState state, ref Transform transform) =>
         {
-            card.Values = _cardDataProvider.GetValues(i + 1);
-            card.Textures = _cardDataProvider.GetTextures(i + 1);
+            values = _cardDataProvider.GetValues(i + 1);
+            textures = _cardDataProvider.GetTextures(i + 1);
             transform.Position = new Vector2(i % 11 * 256, i / 11 * 256);
-            color = i % 2 == 0 ? Color.DarkRed : Color.DarkBlue;
+            state.Color = i % 2 == 0 ? Color.DarkRed : Color.DarkBlue;
             ++i;
         });
 
@@ -84,7 +91,11 @@ public sealed class GameScene : Scene
     public override void Draw(SpriteBatch spriteBatch)
     {
         //_board.Draw(spriteBatch);
-        _world.Query<Card, Transform, Color>().Stream().For(spriteBatch, Renderer.Render);
+        _world
+            .Query<CardTextures, CardState, Transform, Color>()
+            .Has<Card>()
+            .Stream()
+            .For(spriteBatch, Renderer.Render);
     }
 
     //private sealed class DragDrop(OrthographicCamera camera, Board board)
