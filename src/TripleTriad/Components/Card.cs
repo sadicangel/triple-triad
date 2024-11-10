@@ -1,10 +1,23 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text.Json.Serialization;
 
-namespace TripleTriad.Core;
+namespace TripleTriad.Components;
 
-public sealed record class CardData(
+public record struct Card(CardValues Values, CardTextures Textures);
+
+public sealed record class CardTextures(
+    Texture2DRegion Card,
+    Texture2DRegion Back,
+    Texture2DRegion Fill,
+    Texture2DRegion W,
+    Texture2DRegion N,
+    Texture2DRegion E,
+    Texture2DRegion S,
+    Texture2DRegion Element);
+
+public sealed record class CardValues(
     int Edition,
     int Number,
     int Tier,
@@ -15,6 +28,26 @@ public sealed record class CardData(
     int S)
 {
     public Guid Guid { get; init; } = CardId.Create(Edition, Number);
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum Element
+{
+    None,
+    Fire,
+    Ice,
+    Thunder,
+    Water,
+    Earth,
+    Wind,
+    Holy,
+    Dark,
+    Poison,
+}
+
+public enum Direction
+{
+    W, N, E, S,
 }
 
 file static class CardId
@@ -38,8 +71,8 @@ file static class CardId
         Span<byte> hash = stackalloc byte[20];
         SHA1.HashData(data, hash);
 
-        hash[6] = (byte)((hash[6] & 0x0F) | (5 << 4));
-        hash[8] = (byte)((hash[8] & 0x3F) | 0x80);
+        hash[6] = (byte)(hash[6] & 0x0F | 5 << 4);
+        hash[8] = (byte)(hash[8] & 0x3F | 0x80);
 
         return new Guid(hash[..16], bigEndian: true);
     }

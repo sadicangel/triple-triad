@@ -1,23 +1,22 @@
-﻿using TripleTriad.Scenes;
+﻿using TripleTriad.Systems;
 
-namespace TripleTriad.Components;
+namespace TripleTriad.Scenes;
 
-public sealed class SceneManagerComponent(
+public sealed class SceneManager(
     TripleTriadGame game,
     GraphicsDevice graphicsDevice,
     SpriteBatch spriteBatch,
-    OrthographicCamera camera,
-    InputListenerComponent inputListener)
+    OrthographicCamera camera)
     : DrawableGameComponent(game)
 {
-    private readonly Stack<IScene> _scenes = [];
+    private readonly Stack<Scene> _scenes = [];
 
-    public IScene ActiveScene => _scenes.Peek();
+    public Scene ActiveScene => _scenes.Peek();
 
-    public void Push<TScene>() where TScene : IScene =>
+    public void Push<TScene>() where TScene : Scene =>
         _scenes.Push(game.Services.GetRequiredService<TScene>());
 
-    public IScene Pop() => _scenes.Pop();
+    public Scene Pop() => _scenes.Pop();
 
     public override void Initialize()
     {
@@ -27,7 +26,9 @@ public sealed class SceneManagerComponent(
 
     public override void Update(GameTime gameTime)
     {
-        if (inputListener.KeyboardState.WasKeyPressed(Keys.Escape))
+        Input.Update();
+
+        if (Input.Keyboard.WasKeyPressed(Keys.Escape))
         {
             if (_scenes.Count == 1)
                 game.Exit();
@@ -41,7 +42,7 @@ public sealed class SceneManagerComponent(
     public override void Draw(GameTime gameTime)
     {
         graphicsDevice.Clear(Color.Plum);
-        spriteBatch.Begin(sortMode: SpriteSortMode.BackToFront, transformMatrix: camera.GetViewMatrix());
+        spriteBatch.Begin(/*sortMode: SpriteSortMode.BackToFront, */transformMatrix: camera.GetViewMatrix());
         ActiveScene.Draw(spriteBatch);
         spriteBatch.End();
     }

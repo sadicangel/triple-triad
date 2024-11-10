@@ -1,5 +1,4 @@
 ﻿using MonoGame.Extended.ViewportAdapters;
-using TripleTriad.Components;
 using TripleTriad.Configuration;
 using TripleTriad.Scenes;
 using TripleTriad.Services;
@@ -39,9 +38,8 @@ public class TripleTriadGame : Game
                 virtualHeight: 810))
             .AddSingleton(provider => new OrthographicCamera(provider.GetRequiredService<ViewportAdapter>()))
             .AddSingleton(Content)
-            .AddSingleton<CardProvider>()
-            .AddSingleton<InputListenerComponent>()
-            .AddSingleton<SceneManagerComponent>()
+            .AddSingleton<CardDataProvider>()
+            .AddSingleton<SceneManager>()
             .AddTransient<GameScene>()
             .BuildServiceProvider();
     }
@@ -52,8 +50,7 @@ public class TripleTriadGame : Game
 
     protected override void Initialize()
     {
-        Components.Add(Services.GetRequiredService<InputListenerComponent>());
-        Components.Add(Services.GetRequiredService<SceneManagerComponent>());
+        Components.Add(Services.GetRequiredService<SceneManager>());
 
         base.Initialize();
     }

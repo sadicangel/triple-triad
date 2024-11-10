@@ -16,15 +16,13 @@
     <EmbeddedResource Include="Icon.bmp" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="fennecs" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="MonoGame.Extended" />
     <PackageReference Include="MonoGame.Extended.Content.Pipeline" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" />
     <PackageReference Include="MonoGame.Content.Builder.Task" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\TripleTriad.Core\TripleTriad.Core.csproj" />
   </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
     <Message Text="Restoring dotnet tools" Importance="High" />
