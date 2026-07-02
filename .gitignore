@@ -62,6 +62,9 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# Godot editor/import cache
+.godot/
+
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
