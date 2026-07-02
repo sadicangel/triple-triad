@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Ui/hand_view.gd" id="1_hand_view"]
+
+[node name="HandView" type="Control"]
+custom_minimum_size = Vector2(256, 768)
+script = ExtResource("1_hand_view")

@@ -11,6 +11,6 @@
   <Properties Name="Visual Studio">
     <Property Name="OpenWith" Value="Visual Studio Version 17" />
   </Properties>
-  <Project Path="src\TripleTriad.Core\TripleTriad.Core.csproj" Type="C#" />
   <Project Path="src\TripleTriad\TripleTriad.csproj" />
+  <Project Path="tests\TripleTriad.Tests\TripleTriad.Tests.csproj" />
 </Solution>
