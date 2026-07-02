@@ -7,6 +7,9 @@ public sealed record MatchStartedEvent(MatchSnapshot Snapshot)
 
 public sealed record CardPlayedEvent(
     string CardInstanceId,
+    CardSnapshot Card,
+    Seat SourceSeat,
+    int SourceHandIndex,
     int BoardSlotIndex,
     Seat Seat,
     string? ClientRequestId)
@@ -14,7 +17,9 @@ public sealed record CardPlayedEvent(
 
 public sealed record CardCapturedEvent(
     string CardInstanceId,
+    CardSnapshot Card,
     int BoardSlotIndex,
+    Seat PreviousOwner,
     Seat NewOwner,
     string? ClientRequestId)
     : GameEvent(ClientRequestId);

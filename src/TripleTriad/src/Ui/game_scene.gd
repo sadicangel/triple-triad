@@ -21,6 +21,10 @@ var drag_origin := Vector2.ZERO
 var drag_offset := Vector2.ZERO
 var virtual_scale := 1.0
 var is_submitting := false
+var animation_queue: Array[Dictionary] = []
+var animations_running := false
+var pending_snapshot: Dictionary = {}
+var submitted_drag_views: Dictionary = {}
 
 
 func _ready() -> void:
@@ -217,7 +221,10 @@ func _finish_drag() -> void:
     var request_id := "%s-%s" % [Time.get_ticks_usec(), randi()]
     drag_view = null
     dragged_card = {}
-    _animate_drag_view_to_slot(current_drag_view, drop_slot)
+    submitted_drag_views[request_id] = {
+        "view": current_drag_view,
+        "origin": drag_origin,
+    }
     is_submitting = true
     bridge.submit_play_card(str(current_card.get("id", "")), int(slot_snapshot.get("index", -1)), request_id)
     is_submitting = false
@@ -235,10 +242,22 @@ func _clear_drop_previews() -> void:
         slot.set_drop_preview(false)
 
 
-func _animate_drag_view_to_slot(view: Control, slot: Control) -> void:
-    var tween := create_tween()
-    tween.tween_property(view, "position", slot.position, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-    tween.tween_callback(view.queue_free)
+func _animate_card_view_to_slot(view: Control, slot: Control) -> void:
+    view.z_index = 3500
+    var start_position := view.position
+    var midpoint := (start_position + slot.position) * 0.5 + Vector2(0, -44)
+
+    var lift := create_tween()
+    lift.set_parallel(true)
+    lift.tween_property(view, "position", midpoint, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    lift.tween_property(view, "scale", Vector2(1.05, 1.05), 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    await lift.finished
+
+    var settle := create_tween()
+    settle.set_parallel(true)
+    settle.tween_property(view, "position", slot.position, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+    settle.tween_property(view, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+    await settle.finished
 
 
 func _snap_back_drag_view(view: Control) -> void:
@@ -249,25 +268,173 @@ func _snap_back_drag_view(view: Control) -> void:
 
 
 func _on_snapshot_changed(snapshot: Dictionary) -> void:
+    if animations_running or not animation_queue.is_empty():
+        pending_snapshot = snapshot.duplicate(true)
+        return
+
     _apply_snapshot(snapshot)
 
 
 func _on_game_event_raised(game_event: Dictionary) -> void:
     match str(game_event.get("type", "")):
         "card_played":
-            var played_slot := int(game_event.get("board_slot_index", -1))
-            if played_slot >= 0 and played_slot < slots.size():
-                slots[played_slot].animate_played()
+            _enqueue_animation(game_event)
         "card_captured":
-            var captured_slot := int(game_event.get("board_slot_index", -1))
-            if captured_slot >= 0 and captured_slot < slots.size():
-                slots[captured_slot].animate_captured()
+            _enqueue_animation(game_event)
         "move_rejected":
+            _handle_move_rejected(game_event)
             status_label.text = str(game_event.get("reason", "")).to_upper()
         "turn_changed":
             status_label.text = "%s TURN" % str(game_event.get("active_seat", "")).to_upper()
         "match_ended":
             status_label.text = _format_winner(bridge.get_current_snapshot())
+
+
+func _enqueue_animation(game_event: Dictionary) -> void:
+    animation_queue.append(game_event.duplicate(true))
+    _drain_animation_queue()
+
+
+func _drain_animation_queue() -> void:
+    if animations_running:
+        return
+
+    animations_running = true
+    while not animation_queue.is_empty():
+        var game_event: Dictionary = animation_queue.pop_front()
+        match str(game_event.get("type", "")):
+            "card_played":
+                await _animate_card_played(game_event)
+            "card_captured":
+                await _animate_card_captured(game_event)
+
+    animations_running = false
+    if not pending_snapshot.is_empty():
+        var snapshot_to_apply := pending_snapshot.duplicate(true)
+        pending_snapshot = {}
+        _apply_snapshot(snapshot_to_apply)
+
+
+func _animate_card_played(game_event: Dictionary) -> void:
+    var slot_index := int(game_event.get("board_slot_index", -1))
+    if slot_index < 0 or slot_index >= slots.size():
+        return
+
+    var slot: Control = slots[slot_index]
+    var card_data: Dictionary = game_event.get("card", {})
+    if card_data.is_empty():
+        return
+
+    card_data = card_data.duplicate(true)
+    card_data["face_up"] = true
+    card_data["playable"] = false
+
+    var source_seat := str(game_event.get("source_seat", ""))
+    var source_hand_index := int(game_event.get("source_hand_index", -1))
+    var source_hand := _hand_for_seat(source_seat)
+    if source_hand != null:
+        source_hand.hide_card_at(source_hand_index)
+
+    var request_id := str(game_event.get("client_request_id", ""))
+    var view := _take_submitted_drag_view(request_id)
+    if view == null:
+        view = _create_flying_card_from_hand(card_data, source_hand, source_hand_index)
+
+    if view == null:
+        slot.preview_card(card_data, atlas)
+        slot.animate_played()
+        return
+
+    await _animate_card_view_to_slot(view, slot)
+    slot.preview_card(card_data, atlas)
+    slot.animate_played()
+    view.queue_free()
+
+
+func _animate_card_captured(game_event: Dictionary) -> void:
+    var slot_index := int(game_event.get("board_slot_index", -1))
+    if slot_index < 0 or slot_index >= slots.size():
+        return
+
+    var slot: Control = slots[slot_index]
+    var card_data: Dictionary = game_event.get("card", {})
+    if card_data.is_empty():
+        return
+
+    var card_view: Control = slot.get_card_view()
+    if card_view == null:
+        slot.preview_card(card_data, atlas)
+        card_view = slot.get_card_view()
+
+    if card_view == null:
+        return
+
+    var previous_owner := str(game_event.get("previous_owner", ""))
+    var new_owner := str(game_event.get("new_owner", ""))
+    var flip_sign := _flip_sign_for_owner(new_owner)
+    await card_view.animate_owner_flip(previous_owner, new_owner, flip_sign)
+    slot.preview_card(card_data, atlas)
+
+
+func _take_submitted_drag_view(request_id: String) -> Control:
+    if request_id.is_empty() or not submitted_drag_views.has(request_id):
+        return null
+
+    var entry: Dictionary = submitted_drag_views[request_id]
+    submitted_drag_views.erase(request_id)
+    var view: Control = entry.get("view", null)
+    return view if is_instance_valid(view) else null
+
+
+func _create_flying_card_from_hand(card_data: Dictionary, source_hand: Control, source_hand_index: int) -> Control:
+    var source_view: Control = null
+    if source_hand != null:
+        source_view = source_hand.get_card_view_at(source_hand_index)
+
+    var start_position := Vector2.ZERO
+    if source_view != null:
+        start_position = _screen_to_virtual(source_view.get_global_rect().position)
+    elif source_hand != null:
+        start_position = source_hand.position + Vector2(0, max(source_hand_index, 0) * 128.0)
+
+    var view := CardViewScene.instantiate()
+    view.name = "PlayedCard"
+    view.z_index = 3500
+    drag_layer.add_child(view)
+    view.setup(atlas)
+    view.bind(card_data, false)
+    view.set_drag_visual_preview(true)
+    view.position = start_position
+    return view
+
+
+func _handle_move_rejected(game_event: Dictionary) -> void:
+    var request_id := str(game_event.get("client_request_id", ""))
+    if request_id.is_empty() or not submitted_drag_views.has(request_id):
+        return
+
+    var entry: Dictionary = submitted_drag_views[request_id]
+    submitted_drag_views.erase(request_id)
+    var view: Control = entry.get("view", null)
+    if view == null or not is_instance_valid(view):
+        return
+
+    drag_origin = entry.get("origin", view.position)
+    _snap_back_drag_view(view)
+
+
+func _hand_for_seat(seat: String) -> Control:
+    match seat:
+        "Red":
+            return red_hand
+        "Blue":
+            return blue_hand
+        _:
+            return null
+
+
+func _flip_sign_for_owner(owner: String) -> float:
+    return -1.0 if owner == "Blue" else 1.0
 
 
 func _screen_to_virtual(screen_position: Vector2) -> Vector2:

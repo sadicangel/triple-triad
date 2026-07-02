@@ -16,9 +16,18 @@ Assert(AtlasRegions.Element(Element.Fire) == new TileRegion(256, 3840, 256, 256)
 
 var session = new MockGameSession(catalog, autoPlayOpponent: false);
 var events = new List<GameEvent>();
+var eventOrder = new List<string>();
 var snapshotChanges = 0;
-session.EventRaised += events.Add;
-session.SnapshotChanged += _ => snapshotChanges++;
+session.EventRaised += gameEvent =>
+{
+    events.Add(gameEvent);
+    eventOrder.Add(gameEvent.GetType().Name);
+};
+session.SnapshotChanged += _ =>
+{
+    snapshotChanges++;
+    eventOrder.Add("SnapshotChanged");
+};
 
 var initial = session.CurrentSnapshot;
 var blueHand = initial.Hands.Single(hand => hand.Seat == Seat.Blue);
@@ -32,6 +41,7 @@ Assert(initial.Board.Count(cell => cell.CanDrop) == 9, "all empty board cells ac
 await session.SubmitAsync(new PlayCardCommand(blueHand.Cards[1].CardInstanceId, 99, "invalid-slot"));
 Assert(events.OfType<MoveRejectedEvent>().Any(), "invalid slot raises MoveRejected");
 events.Clear();
+eventOrder.Clear();
 
 var playBlue = GameCommandFactory.CreatePlayCardCommand(blueHand.Cards[1], initial.Board[0], "blue-play");
 await session.SubmitAsync(playBlue);
@@ -41,8 +51,15 @@ Assert(snapshotChanges == 1, "accepted move publishes a snapshot");
 Assert(afterBlue.Board[0].Card?.CardInstanceId == playBlue.CardInstanceId, "accepted move places the selected card");
 Assert(afterBlue.ActiveSeat == Seat.Red, "accepted move advances the turn");
 Assert(afterBlue.Hands.Single(hand => hand.Seat == Seat.Blue).Cards.All(card => !card.IsPlayable), "local cards are not playable during opponent turn");
-Assert(events.OfType<CardPlayedEvent>().Single().BoardSlotIndex == 0, "accepted move raises CardPlayed");
+var bluePlayed = events.OfType<CardPlayedEvent>().Single();
+Assert(bluePlayed.BoardSlotIndex == 0, "accepted move raises CardPlayed");
+Assert(bluePlayed.Card.CardInstanceId == playBlue.CardInstanceId, "CardPlayed includes played card snapshot");
+Assert(bluePlayed.Card.Owner == Seat.Blue, "CardPlayed card snapshot keeps played owner");
+Assert(bluePlayed.SourceSeat == Seat.Blue, "CardPlayed includes source seat");
+Assert(bluePlayed.SourceHandIndex == 1, "CardPlayed includes source hand index");
+AssertSequence(eventOrder, ["CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"], "accepted move emits play/turn before snapshot");
 events.Clear();
+eventOrder.Clear();
 
 AssertThrows<InvalidOperationException>(
     () => GameCommandFactory.CreatePlayCardCommand(blueHand.Cards[2], afterBlue.Board[0], "occupied"),
@@ -54,7 +71,15 @@ var afterRed = session.CurrentSnapshot;
 Assert(afterRed.Board[1].Card?.Owner == Seat.Red, "opponent card is placed");
 Assert(afterRed.Board[0].Card?.Owner == Seat.Red, "simple adjacent rank capture flips ownership");
 Assert(afterRed.RedScore == 6 && afterRed.BlueScore == 4, "capture updates score totals");
-Assert(events.OfType<CardCapturedEvent>().Single().BoardSlotIndex == 0, "capture raises CardCaptured for the flipped board card");
+var redPlayed = events.OfType<CardPlayedEvent>().Single();
+Assert(redPlayed.SourceSeat == Seat.Red, "opponent CardPlayed includes source seat");
+Assert(redPlayed.SourceHandIndex == 0, "opponent CardPlayed includes source hand index");
+var captured = events.OfType<CardCapturedEvent>().Single();
+Assert(captured.BoardSlotIndex == 0, "capture raises CardCaptured for the flipped board card");
+Assert(captured.PreviousOwner == Seat.Blue, "capture event includes previous owner");
+Assert(captured.NewOwner == Seat.Red, "capture event includes new owner");
+Assert(captured.Card.Owner == Seat.Red, "capture event includes post-capture card snapshot");
+AssertSequence(eventOrder, ["CardPlayedEvent", "CardCapturedEvent", "TurnChangedEvent", "SnapshotChanged"], "capture move emits play/capture/turn before snapshot");
 
 Console.WriteLine("TripleTriad.Tests passed.");
 
@@ -72,6 +97,13 @@ static void Assert(bool condition, string message)
 {
     if (!condition)
         throw new InvalidOperationException($"Assertion failed: {message}");
+}
+
+static void AssertSequence<T>(IReadOnlyList<T> actual, IReadOnlyList<T> expected, string message)
+{
+    if (actual.Count != expected.Count || !actual.SequenceEqual(expected))
+        throw new InvalidOperationException(
+            $"Assertion failed: {message}. Expected [{string.Join(", ", expected)}], got [{string.Join(", ", actual)}]");
 }
 
 static void AssertThrows<TException>(Action action, string message)

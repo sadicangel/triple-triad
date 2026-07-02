@@ -158,13 +158,18 @@ public partial class GameSessionBridge : Node
             case CardPlayedEvent played:
                 serialized["type"] = "card_played";
                 serialized["card_id"] = played.CardInstanceId;
+                serialized["card"] = Serialize(played.Card);
+                serialized["source_seat"] = played.SourceSeat.ToString();
+                serialized["source_hand_index"] = played.SourceHandIndex;
                 serialized["board_slot_index"] = played.BoardSlotIndex;
                 serialized["seat"] = played.Seat.ToString();
                 break;
             case CardCapturedEvent captured:
                 serialized["type"] = "card_captured";
                 serialized["card_id"] = captured.CardInstanceId;
+                serialized["card"] = Serialize(captured.Card);
                 serialized["board_slot_index"] = captured.BoardSlotIndex;
+                serialized["previous_owner"] = captured.PreviousOwner.ToString();
                 serialized["new_owner"] = captured.NewOwner.ToString();
                 break;
             case TurnChangedEvent turnChanged:

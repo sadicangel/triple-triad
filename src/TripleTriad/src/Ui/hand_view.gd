@@ -32,6 +32,25 @@ func bind(hand_data: Dictionary, atlas: Texture2D) -> void:
         card_views.append(view)
 
 
+func get_card_view_at(index: int) -> Control:
+    if index < 0 or index >= card_views.size():
+        return null
+
+    return card_views[index]
+
+
+func hide_card_at(index: int) -> void:
+    var view := get_card_view_at(index)
+    if view != null:
+        view.visible = false
+
+
+func show_card_at(index: int) -> void:
+    var view := get_card_view_at(index)
+    if view != null:
+        view.visible = true
+
+
 func _clear_cards() -> void:
     for view in card_views:
         if is_instance_valid(view):

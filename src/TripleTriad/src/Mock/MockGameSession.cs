@@ -90,6 +90,7 @@ public sealed class MockGameSession : IGameSession
 			return;
 		}
 
+		var sourceHandIndex = hand.IndexOf(card);
 		hand.Remove(card);
 		_board[command.BoardSlotIndex] = card;
 
@@ -98,9 +99,13 @@ public sealed class MockGameSession : IGameSession
 		if (!_isComplete)
 			_activeSeat = _activeSeat.Opponent();
 
-		PublishSnapshot();
+		var snapshot = BuildSnapshot();
+		CurrentSnapshot = snapshot;
 		EventRaised?.Invoke(new CardPlayedEvent(
 			card.InstanceId,
+			ToSnapshot(card, isFaceUp: true, isPlayable: false),
+			handSeat,
+			sourceHandIndex,
 			command.BoardSlotIndex,
 			card.Owner,
 			command.ClientRequestId));
@@ -109,7 +114,9 @@ public sealed class MockGameSession : IGameSession
 		{
 			EventRaised?.Invoke(new CardCapturedEvent(
 				captured.Card.InstanceId,
+				ToSnapshot(captured.Card, isFaceUp: true, isPlayable: false),
 				captured.BoardSlotIndex,
+				captured.PreviousOwner,
 				captured.Card.Owner,
 				command.ClientRequestId));
 		}
@@ -117,10 +124,12 @@ public sealed class MockGameSession : IGameSession
 		if (_isComplete)
 		{
 			EventRaised?.Invoke(new MatchEndedEvent(GetWinner(), command.ClientRequestId));
+			PublishSnapshot(snapshot);
 			return;
 		}
 
 		EventRaised?.Invoke(new TurnChangedEvent(_activeSeat, command.ClientRequestId));
+		PublishSnapshot(snapshot);
 
 		if (_autoPlayOpponent && _activeSeat != _localSeat)
 			AutoPlayOpponentTurn();
@@ -167,8 +176,9 @@ public sealed class MockGameSession : IGameSession
 			if (attackRank <= defenseRank)
 				return;
 
+			var previousOwner = neighbor.Owner;
 			neighbor.Owner = playedCard.Owner;
-			captured.Add(new CapturedCard(neighborIndex, neighbor));
+			captured.Add(new CapturedCard(neighborIndex, neighbor, previousOwner));
 		}
 	}
 
@@ -260,6 +270,12 @@ public sealed class MockGameSession : IGameSession
 		SnapshotChanged?.Invoke(CurrentSnapshot);
 	}
 
+	private void PublishSnapshot(MatchSnapshot snapshot)
+	{
+		CurrentSnapshot = snapshot;
+		SnapshotChanged?.Invoke(CurrentSnapshot);
+	}
+
 	private void Reject(string reason, PlayCardCommand command) =>
 		EventRaised?.Invoke(new MoveRejectedEvent(
 			reason,
@@ -286,5 +302,5 @@ public sealed class MockGameSession : IGameSession
 		public Seat Owner { get; set; } = owner;
 	}
 
-	private readonly record struct CapturedCard(int BoardSlotIndex, CardState Card);
+	private readonly record struct CapturedCard(int BoardSlotIndex, CardState Card, Seat PreviousOwner);
 }

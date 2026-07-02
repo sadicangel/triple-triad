@@ -38,6 +38,15 @@ func bind(card_data: Dictionary, enable_hover_lift: bool) -> void:
     queue_redraw()
 
 
+func set_card_owner(owner: String) -> void:
+    if card.is_empty():
+        return
+
+    card["owner"] = owner
+    card["face_up"] = true
+    queue_redraw()
+
+
 func set_layout_position(new_position: Vector2, new_normal_z_index: int) -> void:
     layout_position = new_position
     normal_z_index = new_normal_z_index
@@ -51,6 +60,44 @@ func set_drag_visual_preview(enabled: bool) -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     modulate = Color(1, 1, 1, 0.92) if enabled else Color.WHITE
     queue_redraw()
+
+
+func animate_owner_flip(previous_owner: String, new_owner: String, flip_sign: float) -> void:
+    if card.is_empty():
+        return
+
+    set_card_owner(previous_owner)
+    var start_position := position
+    var start_scale := Vector2.ONE
+    scale = start_scale
+    pivot_offset = CARD_SIZE * 0.5
+
+    var lift_position := start_position + Vector2(10.0 * flip_sign, -20.0)
+    var first_half := create_tween()
+    first_half.set_parallel(true)
+    first_half.tween_property(self, "position", lift_position, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    first_half.tween_property(self, "scale", Vector2(0.0, 1.08), 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+    await first_half.finished
+
+    set_card_owner(new_owner)
+
+    var second_half := create_tween()
+    second_half.set_parallel(true)
+    second_half.tween_property(self, "position", start_position + Vector2(-8.0 * flip_sign, -16.0), 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    second_half.tween_property(self, "scale", Vector2(1.0, 1.06), 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    await second_half.finished
+
+    var third_half := create_tween()
+    third_half.set_parallel(true)
+    third_half.tween_property(self, "position", start_position + Vector2(-10.0 * flip_sign, -18.0), 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+    third_half.tween_property(self, "scale", Vector2(0.0, 1.08), 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+    await third_half.finished
+
+    var settle := create_tween()
+    settle.set_parallel(true)
+    settle.tween_property(self, "position", start_position, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    settle.tween_property(self, "scale", start_scale, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    await settle.finished
 
 
 func _gui_input(event: InputEvent) -> void:

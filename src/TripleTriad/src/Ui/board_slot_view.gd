@@ -44,6 +44,43 @@ func bind(cell_data: Dictionary, new_atlas: Texture2D) -> void:
 	queue_redraw()
 
 
+func preview_card(card_data: Dictionary, new_atlas: Texture2D) -> void:
+	snapshot = {
+		"index": slot_index,
+		"element": "None",
+		"can_drop": false,
+		"has_card": true,
+		"card": card_data.duplicate(true),
+	}
+	atlas = new_atlas
+
+	if card_view == null:
+		card_view = CardViewScene.instantiate()
+		add_child(card_view)
+
+	card_view.setup(atlas)
+	card_view.bind(snapshot["card"], false)
+	card_view.set_layout_position(Vector2.ZERO, 10)
+	card_view.set_drag_visual_preview(false)
+	queue_redraw()
+
+
+func clear_card_visual() -> void:
+	if card_view == null:
+		return
+
+	remove_child(card_view)
+	card_view.queue_free()
+	card_view = null
+	snapshot["has_card"] = false
+	snapshot.erase("card")
+	queue_redraw()
+
+
+func get_card_view() -> Control:
+	return card_view
+
+
 func can_drop() -> bool:
 	return bool(snapshot.get("can_drop", false)) and not bool(snapshot.get("has_card", false))
 
