@@ -1,6 +1,6 @@
 using TripleTriad.Data;
 
-namespace TripleTriad.Bridge;
+namespace TripleTriad.Contracts;
 
 public sealed record CardSnapshot(
     string CardInstanceId,

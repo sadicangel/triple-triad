@@ -1,4 +1,5 @@
 using Godot;
+using TripleTriad.Contracts;
 using TripleTriad.Data;
 using TripleTriad.Mock;
 using GodotArray = Godot.Collections.Array;

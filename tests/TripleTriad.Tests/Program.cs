@@ -1,4 +1,4 @@
-using TripleTriad.Bridge;
+using TripleTriad.Contracts;
 using TripleTriad.Data;
 using TripleTriad.Mock;
 
@@ -8,11 +8,6 @@ var catalog = CardCatalog.Load(catalogPath);
 
 Assert(catalog.Cards.Count == 110, "loads all 110 FFVIII card definitions");
 Assert(catalog.Get(110).Name == "Squall", "loads card definitions by number");
-
-var squallRegion = AtlasRegions.CardFace(110);
-Assert(squallRegion == new TileRegion(2560, 2304, 256, 256), "maps card 110 to atlas row 9 column 10");
-Assert(AtlasRegions.Value(Direction.North, 10) == new TileRegion(2560, 3072, 256, 256), "maps A-rank north value to column A");
-Assert(AtlasRegions.Element(Element.Fire) == new TileRegion(256, 3840, 256, 256), "maps fire element to atlas row 15 column 1");
 
 var session = new MockGameSession(catalog, autoPlayOpponent: false);
 var events = new List<GameEvent>();

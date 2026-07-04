@@ -1,4 +1,4 @@
-namespace TripleTriad.Bridge;
+namespace TripleTriad.Contracts;
 
 public interface IGameSession
 {

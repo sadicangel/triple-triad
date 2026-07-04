@@ -1,4 +1,4 @@
-using TripleTriad.Bridge;
+using TripleTriad.Contracts;
 using TripleTriad.Data;
 
 namespace TripleTriad.Mock;
@@ -28,7 +28,7 @@ public sealed class MockGameSession : IGameSession
 		_hands = new Dictionary<Seat, List<CardState>>
 		{
 			[Seat.Red] = CreateHand(Seat.Red, [6, 7, 8, 9, 10]),
-			[Seat.Blue] = CreateHand(Seat.Blue, [1, 2, 3, 4, 5]),
+			[Seat.Blue] = CreateHand(Seat.Blue, [1, 2, 3, 4, 105]),
 		};
 
 		CurrentSnapshot = BuildSnapshot();
