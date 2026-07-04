@@ -1,4 +1,4 @@
-using Godot;
+﻿using Godot;
 using TripleTriad.Contracts;
 using TripleTriad.Data;
 using TripleTriad.Mock;
@@ -11,17 +11,13 @@ public partial class GameSessionBridge : Node
 {
     private IGameSession _session = null!;
 
-    [Signal]
-    public delegate void snapshot_changedEventHandler(GodotDictionary snapshot);
+    [Signal] public delegate void snapshot_changedEventHandler(GodotDictionary snapshot);
 
-    [Signal]
-    public delegate void game_event_raisedEventHandler(GodotDictionary gameEvent);
+    [Signal] public delegate void game_event_raisedEventHandler(GodotDictionary gameEvent);
 
-    [Export]
-    public bool RevealOpponentHand { get; set; }
+    [Export] public bool RevealOpponentHand { get; set; } = true;
 
-    [Export]
-    public bool AutoPlayOpponent { get; set; } = true;
+    [Export] public bool AutoPlayOpponent { get; set; } = true;
 
     public GodotDictionary CurrentSnapshot { get; private set; } = [];
 
@@ -54,10 +50,11 @@ public partial class GameSessionBridge : Node
         if (_session is null)
             return;
 
-        _ = _session.SubmitAsync(new PlayCardCommand(
-            cardInstanceId,
-            boardSlotIndex,
-            clientRequestId));
+        _ = _session.SubmitAsync(
+            new PlayCardCommand(
+                cardInstanceId,
+                boardSlotIndex,
+                clientRequestId));
     }
 
     private void HandleSnapshotChanged(MatchSnapshot snapshot)

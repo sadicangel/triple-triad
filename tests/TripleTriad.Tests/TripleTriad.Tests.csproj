@@ -5,6 +5,6 @@
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\TripleTriad\TripleTriad.csproj" />
+    <ProjectReference Include="..\..\src\TripleTriad.Core\TripleTriad.Core.csproj" />
   </ItemGroup>
 </Project>

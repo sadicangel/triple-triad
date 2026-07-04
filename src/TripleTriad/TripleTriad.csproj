@@ -6,5 +6,10 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <AssemblyName>TripleTriad</AssemblyName>
     <RootNamespace>TripleTriad</RootNamespace>
+    <GodotProjectDir>$(MSBuildProjectDirectory)</GodotProjectDir>
+    <DefaultItemExcludes>$(DefaultItemExcludes);.godot\**\*;**\.godot\**\*;obj\**\*;**\obj\**\*</DefaultItemExcludes>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TripleTriad.Core\TripleTriad.Core.csproj" />
+  </ItemGroup>
 </Project>
