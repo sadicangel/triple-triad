@@ -2,11 +2,16 @@ namespace TripleTriad.Contracts;
 
 public interface IGameSession
 {
-    MatchSnapshot CurrentSnapshot { get; }
+    MatchSnapshot? CurrentSnapshot { get; }
 
-    event Action<MatchSnapshot>? SnapshotChanged;
+    SessionConnectionState ConnectionState { get; }
 
-    event Action<GameEvent>? EventRaised;
+    IAsyncEnumerable<GameSessionUpdate> ReadUpdatesAsync(
+        CancellationToken cancellationToken = default);
 
-    ValueTask SubmitAsync(GameCommand command, CancellationToken cancellationToken = default);
+    ValueTask<MatchSnapshot> StartAsync(CancellationToken cancellationToken = default);
+
+    ValueTask SendCommandAsync(
+        GameCommand command,
+        CancellationToken cancellationToken = default);
 }

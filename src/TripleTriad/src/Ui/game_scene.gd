@@ -20,6 +20,8 @@ var dragged_card: Dictionary = {}
 var drag_origin := Vector2.ZERO
 var drag_offset := Vector2.ZERO
 var virtual_scale := 1.0
+var session_connected := false
+var has_snapshot := false
 var is_submitting := false
 var animation_queue: Array[Dictionary] = []
 var animations_running := false
@@ -34,7 +36,12 @@ func _ready() -> void:
     _update_virtual_layout()
     bridge.snapshot_changed.connect(_on_snapshot_changed)
     bridge.game_event_raised.connect(_on_game_event_raised)
-    _apply_snapshot(bridge.get_current_snapshot())
+    bridge.connection_state_changed.connect(_on_connection_state_changed)
+    var initial_snapshot: Dictionary = bridge.get_current_snapshot()
+    if initial_snapshot.is_empty():
+        status_label.text = "CONNECTING"
+    else:
+        _apply_snapshot(initial_snapshot)
 
 
 func _notification(what: int) -> void:
@@ -147,6 +154,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
     if snapshot.is_empty():
         return
 
+    has_snapshot = true
     var red_hand_data := {}
     var blue_hand_data := {}
     for hand in snapshot.get("hands", []):
@@ -178,7 +186,7 @@ func _format_winner(snapshot: Dictionary) -> String:
 
 
 func _start_drag(card: Dictionary, source_view: Control) -> void:
-    if drag_view != null or is_submitting or not bool(card.get("playable", false)):
+    if drag_view != null or is_submitting or not _session_ready() or not bool(card.get("playable", false)):
         return
 
     dragged_card = card.duplicate(true)
@@ -211,7 +219,7 @@ func _finish_drag() -> void:
     var drop_slot := _find_drop_slot(virtual_mouse)
     _clear_drop_previews()
 
-    if drop_slot == null:
+    if drop_slot == null or not _session_ready():
         _snap_back_drag_view(current_drag_view)
         drag_view = null
         dragged_card = {}
@@ -227,10 +235,12 @@ func _finish_drag() -> void:
     }
     is_submitting = true
     bridge.submit_play_card(str(current_card.get("id", "")), int(slot_snapshot.get("index", -1)), request_id)
-    is_submitting = false
 
 
 func _find_drop_slot(virtual_mouse: Vector2) -> Control:
+    if not _session_ready():
+        return null
+
     for slot in slots:
         if slot.can_drop() and slot.hit_test_virtual(virtual_mouse):
             return slot
@@ -278,16 +288,56 @@ func _on_snapshot_changed(snapshot: Dictionary) -> void:
 func _on_game_event_raised(game_event: Dictionary) -> void:
     match str(game_event.get("type", "")):
         "card_played":
+            _clear_submitting_if_local(game_event)
             _enqueue_animation(game_event)
         "card_captured":
             _enqueue_animation(game_event)
         "move_rejected":
+            _clear_submitting_if_local(game_event)
             _handle_move_rejected(game_event)
             status_label.text = str(game_event.get("reason", "")).to_upper()
         "turn_changed":
             status_label.text = "%s TURN" % str(game_event.get("active_seat", "")).to_upper()
         "match_ended":
             status_label.text = _format_winner(bridge.get_current_snapshot())
+
+
+func _on_connection_state_changed(connection_state: Dictionary) -> void:
+    var state := str(connection_state.get("state", ""))
+    session_connected = state == "Connected"
+
+    if session_connected:
+        if not has_snapshot:
+            status_label.text = "CONNECTING"
+        return
+
+    _clear_drop_previews()
+    if drag_view != null:
+        _snap_back_drag_view(drag_view)
+        drag_view = null
+        dragged_card = {}
+
+    if state == "Failed" or state == "Disconnected" or state == "Closed":
+        is_submitting = false
+        for request_id in submitted_drag_views.keys():
+            var entry: Dictionary = submitted_drag_views[request_id]
+            var view: Control = entry.get("view", null)
+            if view != null and is_instance_valid(view):
+                drag_origin = entry.get("origin", view.position)
+                _snap_back_drag_view(view)
+        submitted_drag_views.clear()
+
+    match state:
+        "Connecting", "Reconnecting":
+            status_label.text = state.to_upper()
+        "Failed":
+            status_label.text = str(connection_state.get("reason", "SESSION FAILED")).to_upper()
+        "Disconnected", "Closed":
+            status_label.text = state.to_upper()
+
+
+func _session_ready() -> bool:
+    return session_connected and has_snapshot
 
 
 func _enqueue_animation(game_event: Dictionary) -> void:
@@ -421,6 +471,12 @@ func _handle_move_rejected(game_event: Dictionary) -> void:
 
     drag_origin = entry.get("origin", view.position)
     _snap_back_drag_view(view)
+
+
+func _clear_submitting_if_local(game_event: Dictionary) -> void:
+    var request_id := str(game_event.get("client_request_id", ""))
+    if not request_id.is_empty() and submitted_drag_views.has(request_id):
+        is_submitting = false
 
 
 func _hand_for_seat(seat: String) -> Control:

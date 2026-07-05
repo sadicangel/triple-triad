@@ -1,4 +1,5 @@
-﻿using Godot;
+﻿using System.Collections.Concurrent;
+using Godot;
 using TripleTriad.Contracts;
 using TripleTriad.Data;
 using TripleTriad.Mock;
@@ -9,11 +10,16 @@ namespace TripleTriad.Bridge;
 
 public partial class GameSessionBridge : Node
 {
+    private readonly ConcurrentQueue<GameSessionUpdate> _pendingUpdates = new();
+    private readonly CancellationTokenSource _sessionLifetime = new();
+    private bool _isExiting;
     private IGameSession _session = null!;
 
     [Signal] public delegate void snapshot_changedEventHandler(GodotDictionary snapshot);
 
     [Signal] public delegate void game_event_raisedEventHandler(GodotDictionary gameEvent);
+
+    [Signal] public delegate void connection_state_changedEventHandler(GodotDictionary connectionState);
 
     [Export] public bool RevealOpponentHand { get; set; } = true;
 
@@ -21,7 +27,7 @@ public partial class GameSessionBridge : Node
 
     public GodotDictionary CurrentSnapshot { get; private set; } = [];
 
-    public override void _Ready()
+    public override async void _Ready()
     {
         var catalog = CardCatalog.Load(ProjectSettings.GlobalizePath("res://assets/triple_triad/cards.json"));
         _session = new MockGameSession(
@@ -29,18 +35,27 @@ public partial class GameSessionBridge : Node
             Seat.Blue,
             RevealOpponentHand,
             AutoPlayOpponent);
-        _session.SnapshotChanged += HandleSnapshotChanged;
-        _session.EventRaised += HandleGameEventRaised;
-        CurrentSnapshot = Serialize(_session.CurrentSnapshot);
+        _ = PumpSessionUpdatesAsync(_sessionLifetime.Token);
+
+        try
+        {
+            var snapshot = await _session.StartAsync(_sessionLifetime.Token);
+            if (CurrentSnapshot.Count == 0)
+                CurrentSnapshot = Serialize(snapshot);
+        }
+        catch (OperationCanceledException) when (_sessionLifetime.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            EnqueueSessionUpdate(new GameSessionConnectionStateUpdate(0, SessionConnectionState.Failed, ex.Message));
+        }
     }
 
     public override void _ExitTree()
     {
-        if (_session is null)
-            return;
+        _isExiting = true;
+        _sessionLifetime.Cancel();
 
-        _session.SnapshotChanged -= HandleSnapshotChanged;
-        _session.EventRaised -= HandleGameEventRaised;
+        _sessionLifetime.Dispose();
     }
 
     public GodotDictionary get_current_snapshot() => CurrentSnapshot;
@@ -50,21 +65,88 @@ public partial class GameSessionBridge : Node
         if (_session is null)
             return;
 
-        _ = _session.SubmitAsync(
-            new PlayCardCommand(
-                cardInstanceId,
-                boardSlotIndex,
-                clientRequestId));
+        _ = SendPlayCardAsync(cardInstanceId, boardSlotIndex, clientRequestId);
     }
 
-    private void HandleSnapshotChanged(MatchSnapshot snapshot)
+    private async Task SendPlayCardAsync(string cardInstanceId, int boardSlotIndex, string clientRequestId)
     {
-        CurrentSnapshot = Serialize(snapshot);
-        EmitSignal(SignalName.snapshot_changed, CurrentSnapshot);
+        try
+        {
+            await _session.SendCommandAsync(
+                new PlayCardCommand(
+                    cardInstanceId,
+                    boardSlotIndex,
+                    clientRequestId),
+                _sessionLifetime.Token);
+        }
+        catch (OperationCanceledException) when (_sessionLifetime.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            EnqueueSessionUpdate(new GameSessionConnectionStateUpdate(0, SessionConnectionState.Failed, ex.Message));
+        }
     }
 
-    private void HandleGameEventRaised(GameEvent gameEvent) =>
-        EmitSignal(SignalName.game_event_raised, Serialize(gameEvent));
+    private async Task PumpSessionUpdatesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await foreach (var update in _session.ReadUpdatesAsync(cancellationToken))
+                EnqueueSessionUpdate(update);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            EnqueueSessionUpdate(new GameSessionConnectionStateUpdate(0, SessionConnectionState.Failed, ex.Message));
+        }
+    }
+
+    private void EnqueueSessionUpdate(GameSessionUpdate update)
+    {
+        if (_isExiting)
+            return;
+
+        _pendingUpdates.Enqueue(update);
+
+        CallDeferred(nameof(DrainSessionUpdates));
+    }
+
+    public void DrainSessionUpdates()
+    {
+        while (_pendingUpdates.TryDequeue(out var update))
+            ApplySessionUpdate(update);
+    }
+
+    private void ApplySessionUpdate(GameSessionUpdate update)
+    {
+        switch (update)
+        {
+            case GameSessionSnapshotUpdate snapshotUpdate:
+                CurrentSnapshot = Serialize(snapshotUpdate.Snapshot);
+                CurrentSnapshot["sequence"] = snapshotUpdate.Sequence;
+                EmitSignal(SignalName.snapshot_changed, CurrentSnapshot);
+                break;
+            case GameSessionEventUpdate eventUpdate:
+                var serializedEvent = Serialize(eventUpdate.GameEvent);
+                serializedEvent["sequence"] = eventUpdate.Sequence;
+                EmitSignal(SignalName.game_event_raised, serializedEvent);
+                break;
+            case GameSessionConnectionStateUpdate stateUpdate:
+                EmitConnectionState(stateUpdate.State, stateUpdate.Reason, stateUpdate.Sequence);
+                break;
+        }
+    }
+
+    private void EmitConnectionState(SessionConnectionState state, string? reason, long sequence)
+    {
+        var serialized = new GodotDictionary
+        {
+            ["state"] = state.ToString(),
+            ["reason"] = reason ?? string.Empty,
+            ["sequence"] = sequence,
+        };
+
+        EmitSignal(SignalName.connection_state_changed, serialized);
+    }
 
     private static GodotDictionary Serialize(MatchSnapshot snapshot)
     {

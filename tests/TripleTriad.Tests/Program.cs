@@ -9,22 +9,27 @@ var catalog = CardCatalog.Load(catalogPath);
 Assert(catalog.Cards.Count == 110, "loads all 110 FFVIII card definitions");
 Assert(catalog.Get(110).Name == "Squall", "loads card definitions by number");
 
-var session = new MockGameSession(catalog, autoPlayOpponent: false);
-var events = new List<GameEvent>();
-var eventOrder = new List<string>();
-var snapshotChanges = 0;
-session.EventRaised += gameEvent =>
-{
-    events.Add(gameEvent);
-    eventOrder.Add(gameEvent.GetType().Name);
-};
-session.SnapshotChanged += _ =>
-{
-    snapshotChanges++;
-    eventOrder.Add("SnapshotChanged");
-};
+var unstarted = new MockGameSession(catalog, autoPlayOpponent: false);
+Assert(unstarted.CurrentSnapshot is null, "current snapshot starts empty before StartAsync");
+await AssertThrowsAsync<InvalidOperationException>(
+    async () => await unstarted.SendCommandAsync(new PlayCardCommand("unknown", 0, "before-start")),
+    "SendCommandAsync before StartAsync throws");
 
-var initial = session.CurrentSnapshot;
+var session = new MockGameSession(catalog, autoPlayOpponent: false);
+var updates = new List<GameSessionUpdate>();
+var eventOrder = new List<string>();
+await using var updateReader = session.ReadUpdatesAsync().GetAsyncEnumerator();
+
+var initial = await session.StartAsync();
+await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 3, "StartAsync updates");
+Assert(session.ConnectionState == SessionConnectionState.Connected, "StartAsync leaves the session connected");
+Assert(ReferenceEquals(session.CurrentSnapshot, initial), "StartAsync stores the initial snapshot cache");
+AssertSequence(
+    eventOrder,
+    ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected"],
+    "StartAsync emits connecting/snapshot/connected updates");
+eventOrder.Clear();
+
 var blueHand = initial.Hands.Single(hand => hand.Seat == Seat.Blue);
 var redHand = initial.Hands.Single(hand => hand.Seat == Seat.Red);
 
@@ -33,48 +38,52 @@ Assert(blueHand.Cards.All(card => card.IsPlayable), "local active hand is playab
 Assert(redHand.Cards.All(card => !card.IsFaceUp && !card.IsPlayable), "opponent hand visibility is state-driven and hidden by default");
 Assert(initial.Board.Count(cell => cell.CanDrop) == 9, "all empty board cells accept the local first move");
 
-await session.SubmitAsync(new PlayCardCommand(blueHand.Cards[1].CardInstanceId, 99, "invalid-slot"));
-Assert(events.OfType<MoveRejectedEvent>().Any(), "invalid slot raises MoveRejected");
-events.Clear();
+await session.SendCommandAsync(new PlayCardCommand(blueHand.Cards[1].CardInstanceId, 99, "invalid-slot"));
+await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 1, "invalid move update");
+Assert(updates.OfType<GameSessionEventUpdate>().Last().GameEvent is MoveRejectedEvent, "invalid slot emits MoveRejected on the update stream");
+AssertSequence(eventOrder, ["MoveRejectedEvent"], "rejected move emits only rejection event");
 eventOrder.Clear();
 
 var playBlue = GameCommandFactory.CreatePlayCardCommand(blueHand.Cards[1], initial.Board[0], "blue-play");
-await session.SubmitAsync(playBlue);
+await session.SendCommandAsync(playBlue);
+await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 3, "blue move updates");
 
-var afterBlue = session.CurrentSnapshot;
-Assert(snapshotChanges == 1, "accepted move publishes a snapshot");
+var afterBlue = session.CurrentSnapshot ?? throw new InvalidOperationException("Accepted move did not cache a snapshot.");
+Assert(ReferenceEquals(session.CurrentSnapshot, updates.OfType<GameSessionSnapshotUpdate>().Last().Snapshot), "accepted move caches the emitted snapshot");
 Assert(afterBlue.Board[0].Card?.CardInstanceId == playBlue.CardInstanceId, "accepted move places the selected card");
 Assert(afterBlue.ActiveSeat == Seat.Red, "accepted move advances the turn");
 Assert(afterBlue.Hands.Single(hand => hand.Seat == Seat.Blue).Cards.All(card => !card.IsPlayable), "local cards are not playable during opponent turn");
-var bluePlayed = events.OfType<CardPlayedEvent>().Single();
+var bluePlayed = updates.OfType<GameSessionEventUpdate>().Select(update => update.GameEvent).OfType<CardPlayedEvent>().Single();
 Assert(bluePlayed.BoardSlotIndex == 0, "accepted move raises CardPlayed");
 Assert(bluePlayed.Card.CardInstanceId == playBlue.CardInstanceId, "CardPlayed includes played card snapshot");
 Assert(bluePlayed.Card.Owner == Seat.Blue, "CardPlayed card snapshot keeps played owner");
 Assert(bluePlayed.SourceSeat == Seat.Blue, "CardPlayed includes source seat");
 Assert(bluePlayed.SourceHandIndex == 1, "CardPlayed includes source hand index");
 AssertSequence(eventOrder, ["CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"], "accepted move emits play/turn before snapshot");
-events.Clear();
 eventOrder.Clear();
 
 AssertThrows<InvalidOperationException>(
     () => GameCommandFactory.CreatePlayCardCommand(blueHand.Cards[2], afterBlue.Board[0], "occupied"),
     "command factory rejects occupied slots");
 
-await session.SubmitAsync(new PlayCardCommand(redHand.Cards[0].CardInstanceId, 1, "red-play"));
-var afterRed = session.CurrentSnapshot;
+await session.SendCommandAsync(new PlayCardCommand(redHand.Cards[0].CardInstanceId, 1, "red-play"));
+await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 4, "red move updates");
+var afterRed = session.CurrentSnapshot ?? throw new InvalidOperationException("Opponent move did not cache a snapshot.");
 
 Assert(afterRed.Board[1].Card?.Owner == Seat.Red, "opponent card is placed");
 Assert(afterRed.Board[0].Card?.Owner == Seat.Red, "simple adjacent rank capture flips ownership");
 Assert(afterRed.RedScore == 6 && afterRed.BlueScore == 4, "capture updates score totals");
-var redPlayed = events.OfType<CardPlayedEvent>().Single();
+var redPlayed = updates.OfType<GameSessionEventUpdate>().Select(update => update.GameEvent).OfType<CardPlayedEvent>().Last();
 Assert(redPlayed.SourceSeat == Seat.Red, "opponent CardPlayed includes source seat");
 Assert(redPlayed.SourceHandIndex == 0, "opponent CardPlayed includes source hand index");
-var captured = events.OfType<CardCapturedEvent>().Single();
+var captured = updates.OfType<GameSessionEventUpdate>().Select(update => update.GameEvent).OfType<CardCapturedEvent>().Single();
 Assert(captured.BoardSlotIndex == 0, "capture raises CardCaptured for the flipped board card");
 Assert(captured.PreviousOwner == Seat.Blue, "capture event includes previous owner");
 Assert(captured.NewOwner == Seat.Red, "capture event includes new owner");
 Assert(captured.Card.Owner == Seat.Red, "capture event includes post-capture card snapshot");
 AssertSequence(eventOrder, ["CardPlayedEvent", "CardCapturedEvent", "TurnChangedEvent", "SnapshotChanged"], "capture move emits play/capture/turn before snapshot");
+
+AssertStrictlyIncreasing(updates.Select(update => update.Sequence), "all session updates are strictly ordered");
 
 Console.WriteLine("TripleTriad.Tests passed.");
 
@@ -86,6 +95,37 @@ static string FindRepoRoot()
 
     return directory?.FullName
         ?? throw new InvalidOperationException("Could not locate repository root.");
+}
+
+static string DescribeUpdate(GameSessionUpdate update) =>
+    update switch
+    {
+        GameSessionConnectionStateUpdate connection => $"ConnectionState:{connection.State}",
+        GameSessionEventUpdate gameEvent => gameEvent.GameEvent.GetType().Name,
+        GameSessionSnapshotUpdate => "SnapshotChanged",
+        _ => update.GetType().Name,
+    };
+
+static async ValueTask AppendNextUpdatesAsync(
+    IAsyncEnumerator<GameSessionUpdate> reader,
+    List<GameSessionUpdate> updates,
+    List<string> eventOrder,
+    int count,
+    string message)
+{
+    for (var index = 0; index < count; index++)
+    {
+        var moveNextTask = reader.MoveNextAsync().AsTask();
+        var completed = await Task.WhenAny(moveNextTask, Task.Delay(TimeSpan.FromSeconds(5)));
+        if (completed != moveNextTask)
+            throw new InvalidOperationException($"Assertion failed: timed out waiting for {message}.");
+
+        if (!await moveNextTask)
+            throw new InvalidOperationException($"Assertion failed: update stream ended while waiting for {message}.");
+
+        updates.Add(reader.Current);
+        eventOrder.Add(DescribeUpdate(reader.Current));
+    }
 }
 
 static void Assert(bool condition, string message)
@@ -101,12 +141,39 @@ static void AssertSequence<T>(IReadOnlyList<T> actual, IReadOnlyList<T> expected
             $"Assertion failed: {message}. Expected [{string.Join(", ", expected)}], got [{string.Join(", ", actual)}]");
 }
 
+static void AssertStrictlyIncreasing(IEnumerable<long> values, string message)
+{
+    long? previous = null;
+    foreach (var value in values)
+    {
+        if (previous is not null && value <= previous.Value)
+            throw new InvalidOperationException($"Assertion failed: {message}.");
+
+        previous = value;
+    }
+}
+
 static void AssertThrows<TException>(Action action, string message)
     where TException : Exception
 {
     try
     {
         action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"Assertion failed: {message}");
+}
+
+static async ValueTask AssertThrowsAsync<TException>(Func<ValueTask> action, string message)
+    where TException : Exception
+{
+    try
+    {
+        await action();
     }
     catch (TException)
     {
