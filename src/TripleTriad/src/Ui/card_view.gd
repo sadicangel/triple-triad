@@ -9,6 +9,7 @@ var atlas: Texture2D
 var card: Dictionary = {}
 var hover_lift_enabled := false
 var is_drag_preview := false
+var is_drag_placeholder := false
 var is_hovered := false
 var layout_position := Vector2.ZERO
 var normal_z_index := 0
@@ -33,7 +34,7 @@ func setup(new_atlas: Texture2D) -> void:
 func bind(card_data: Dictionary, enable_hover_lift: bool) -> void:
     card = card_data.duplicate(true)
     hover_lift_enabled = enable_hover_lift
-    mouse_filter = Control.MOUSE_FILTER_STOP if not is_drag_preview and bool(card.get("playable", false)) else Control.MOUSE_FILTER_IGNORE
+    _update_mouse_filter()
     tooltip_text = _tooltip_text()
     queue_redraw()
 
@@ -57,8 +58,18 @@ func set_layout_position(new_position: Vector2, new_normal_z_index: int) -> void
 
 func set_drag_visual_preview(enabled: bool) -> void:
     is_drag_preview = enabled
-    mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _update_mouse_filter()
     modulate = Color(1, 1, 1, 0.92) if enabled else Color.WHITE
+    queue_redraw()
+
+
+func set_drag_placeholder(enabled: bool) -> void:
+    is_drag_placeholder = enabled
+    if enabled:
+        _reset_hover_state()
+
+    modulate = Color.WHITE
+    _update_mouse_filter()
     queue_redraw()
 
 
@@ -101,7 +112,7 @@ func animate_owner_flip(previous_owner: String, new_owner: String, flip_sign: fl
 
 
 func _gui_input(event: InputEvent) -> void:
-    if card.is_empty() or not bool(card.get("playable", false)) or is_drag_preview:
+    if card.is_empty() or not bool(card.get("playable", false)) or is_drag_preview or is_drag_placeholder:
         return
 
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -111,6 +122,10 @@ func _gui_input(event: InputEvent) -> void:
 
 func _draw() -> void:
     if atlas == null or card.is_empty():
+        return
+
+    if is_drag_placeholder:
+        _draw_placeholder()
         return
 
     if not bool(card.get("face_up", false)):
@@ -136,8 +151,23 @@ func _draw_tile(region: Rect2, color: Color) -> void:
     draw_texture_rect_region(atlas, Rect2(Vector2.ZERO, size), region, color)
 
 
+func _draw_placeholder() -> void:
+    var owner_color := TriadCardPalette.for_seat(str(card.get("owner", "Blue")))
+    var fill_color := owner_color.darkened(0.35)
+    fill_color.a = 0.18
+    var border_color := owner_color
+    border_color.a = 0.52
+    var guide_color := owner_color
+    guide_color.a = 0.26
+    var rect := Rect2(Vector2(12, 12), size - Vector2(24, 24))
+    draw_rect(Rect2(Vector2.ZERO, size), fill_color, true)
+    draw_rect(rect, border_color, false, 4.0)
+    draw_line(rect.position + Vector2(18, 18), rect.end - Vector2(18, 18), guide_color, 3.0)
+    draw_line(Vector2(rect.end.x - 18, rect.position.y + 18), Vector2(rect.position.x + 18, rect.end.y - 18), guide_color, 3.0)
+
+
 func _on_mouse_entered() -> void:
-    if not bool(card.get("playable", false)) or not hover_lift_enabled or is_drag_preview:
+    if not bool(card.get("playable", false)) or not hover_lift_enabled or is_drag_preview or is_drag_placeholder:
         return
 
     is_hovered = true
@@ -164,6 +194,20 @@ func _animate_hover(target_position: Vector2, target_scale: Vector2) -> void:
     hover_tween.set_parallel(true)
     hover_tween.tween_property(self, "position", target_position, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     hover_tween.tween_property(self, "scale", target_scale, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+func _reset_hover_state() -> void:
+    if hover_tween != null:
+        hover_tween.kill()
+
+    is_hovered = false
+    position = layout_position
+    scale = Vector2.ONE
+    z_index = normal_z_index
+
+
+func _update_mouse_filter() -> void:
+    mouse_filter = Control.MOUSE_FILTER_STOP if not is_drag_preview and not is_drag_placeholder and bool(card.get("playable", false)) else Control.MOUSE_FILTER_IGNORE
 
 
 func _tooltip_text() -> String:

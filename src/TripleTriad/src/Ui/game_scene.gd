@@ -16,6 +16,7 @@ var score_label: Label
 var status_label: Label
 var drag_layer: Control
 var drag_view: Control
+var drag_source_view: Control
 var dragged_card: Dictionary = {}
 var drag_origin := Vector2.ZERO
 var drag_offset := Vector2.ZERO
@@ -190,6 +191,8 @@ func _start_drag(card: Dictionary, source_view: Control) -> void:
         return
 
     dragged_card = card.duplicate(true)
+    drag_source_view = source_view
+    _set_drag_placeholder(drag_source_view, true)
     drag_origin = _screen_to_virtual(source_view.get_global_rect().position)
     var virtual_mouse := _screen_to_virtual(get_global_mouse_position())
     drag_offset = virtual_mouse - drag_origin
@@ -220,18 +223,22 @@ func _finish_drag() -> void:
     _clear_drop_previews()
 
     if drop_slot == null or not _session_ready():
-        _snap_back_drag_view(current_drag_view)
+        _snap_back_drag_view(current_drag_view, drag_source_view)
         drag_view = null
+        drag_source_view = null
         dragged_card = {}
         return
 
     var slot_snapshot: Dictionary = drop_slot.get_snapshot()
     var request_id := "%s-%s" % [Time.get_ticks_usec(), randi()]
+    var current_source_view := drag_source_view
     drag_view = null
+    drag_source_view = null
     dragged_card = {}
     submitted_drag_views[request_id] = {
         "view": current_drag_view,
         "origin": drag_origin,
+        "source_view": current_source_view,
     }
     is_submitting = true
     bridge.submit_play_card(str(current_card.get("id", "")), int(slot_snapshot.get("index", -1)), request_id)
@@ -270,11 +277,22 @@ func _animate_card_view_to_slot(view: Control, slot: Control) -> void:
     await settle.finished
 
 
-func _snap_back_drag_view(view: Control) -> void:
+func _snap_back_drag_view(view: Control, source_view: Control = null) -> void:
     var tween := create_tween()
     tween.tween_property(view, "position", drag_origin, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-    tween.tween_callback(view.queue_free)
+    tween.tween_callback(Callable(self, "_finish_snap_back").bind(view, source_view))
+
+
+func _finish_snap_back(view: Control, source_view: Control = null) -> void:
+    _set_drag_placeholder(source_view, false)
+    if view != null and is_instance_valid(view):
+        view.queue_free()
     _apply_snapshot(bridge.get_current_snapshot())
+
+
+func _set_drag_placeholder(source_view: Control, enabled: bool) -> void:
+    if source_view != null and is_instance_valid(source_view) and source_view.has_method("set_drag_placeholder"):
+        source_view.set_drag_placeholder(enabled)
 
 
 func _on_snapshot_changed(snapshot: Dictionary) -> void:
@@ -313,8 +331,9 @@ func _on_connection_state_changed(connection_state: Dictionary) -> void:
 
     _clear_drop_previews()
     if drag_view != null:
-        _snap_back_drag_view(drag_view)
+        _snap_back_drag_view(drag_view, drag_source_view)
         drag_view = null
+        drag_source_view = null
         dragged_card = {}
 
     if state == "Failed" or state == "Disconnected" or state == "Closed":
@@ -324,7 +343,7 @@ func _on_connection_state_changed(connection_state: Dictionary) -> void:
             var view: Control = entry.get("view", null)
             if view != null and is_instance_valid(view):
                 drag_origin = entry.get("origin", view.position)
-                _snap_back_drag_view(view)
+                _snap_back_drag_view(view, entry.get("source_view", null))
         submitted_drag_views.clear()
 
     match state:
@@ -470,7 +489,7 @@ func _handle_move_rejected(game_event: Dictionary) -> void:
         return
 
     drag_origin = entry.get("origin", view.position)
-    _snap_back_drag_view(view)
+    _snap_back_drag_view(view, entry.get("source_view", null))
 
 
 func _clear_submitting_if_local(game_event: Dictionary) -> void:
