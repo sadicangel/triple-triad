@@ -159,7 +159,7 @@ public partial class GameSessionBridge : Node
             hands.Add(Serialize(hand));
 
         var rules = new GodotArray();
-        foreach (var rule in snapshot.Rules)
+        foreach (var rule in snapshot.Rules.ToDisplayNames())
             rules.Add(rule);
 
         return new GodotDictionary

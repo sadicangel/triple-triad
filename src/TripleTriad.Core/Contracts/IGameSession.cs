@@ -2,6 +2,8 @@ namespace TripleTriad.Contracts;
 
 public interface IGameSession
 {
+    GameRules Rules { get; }
+
     MatchSnapshot? CurrentSnapshot { get; }
 
     SessionConnectionState ConnectionState { get; }

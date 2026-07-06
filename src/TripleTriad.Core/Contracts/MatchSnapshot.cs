@@ -27,7 +27,7 @@ public sealed record HandSnapshot(
 public sealed record MatchSnapshot(
     Seat ActiveSeat,
     Seat LocalSeat,
-    IReadOnlyList<string> Rules,
+    GameRules Rules,
     int BlueScore,
     int RedScore,
     IReadOnlyList<BoardCellSnapshot> Board,

@@ -21,12 +21,14 @@ public sealed class MockGameSession : IGameSession
         CardCatalog catalog,
         Seat localSeat = Seat.Blue,
         bool revealOpponentHand = false,
-        bool autoPlayOpponent = false)
+        bool autoPlayOpponent = false,
+        GameRules rules = GameRules.Default)
     {
         _catalog = catalog;
         _localSeat = localSeat;
         _revealOpponentHand = revealOpponentHand;
         _autoPlayOpponent = autoPlayOpponent;
+        Rules = revealOpponentHand ? rules | GameRules.Open : rules;
         _activeSeat = Seat.Blue;
         _hands = new Dictionary<Seat, List<CardState>>
         {
@@ -36,6 +38,8 @@ public sealed class MockGameSession : IGameSession
     }
 
     public MatchSnapshot? CurrentSnapshot { get; private set; }
+
+    public GameRules Rules { get; }
 
     public SessionConnectionState ConnectionState { get; private set; } = SessionConnectionState.NotStarted;
 
@@ -249,7 +253,7 @@ public sealed class MockGameSession : IGameSession
         return new MatchSnapshot(
             _activeSeat,
             _localSeat,
-            _revealOpponentHand ? ["Open"] : ["Basic"],
+            Rules,
             blueScore,
             redScore,
             board,
