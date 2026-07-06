@@ -75,6 +75,15 @@ public sealed class HostLobbySession : ILobbySession
         await TryStartMatchAsync(cancellationToken);
     }
 
+    public ValueTask TakeSeatAsync(
+        Seat seat,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureStarted();
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new NotSupportedException("Online lobby seat switching is not implemented yet.");
+    }
+
     public async ValueTask<MatchSetup> WaitForMatchStartAsync(
         CancellationToken cancellationToken = default) =>
         await _matchStarted.Task.WaitAsync(cancellationToken);

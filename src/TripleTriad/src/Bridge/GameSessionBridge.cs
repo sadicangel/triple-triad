@@ -30,11 +30,13 @@ public partial class GameSessionBridge : Node
     public override async void _Ready()
     {
         var catalog = CardCatalog.Load(ProjectSettings.GlobalizePath("res://assets/triple_triad/cards.json"));
-        _session = new MockGameSession(
-            catalog,
-            Seat.Blue,
-            RevealOpponentHand,
-            AutoPlayOpponent);
+        var flow = GetNodeOrNull<GameFlowBridge>("/root/GameFlowBridge");
+        _session = flow?.GetActiveGameSession()
+            ?? new MockGameSession(
+                catalog,
+                Seat.Blue,
+                RevealOpponentHand,
+                AutoPlayOpponent);
         _ = PumpSessionUpdatesAsync(_sessionLifetime.Token);
 
         try

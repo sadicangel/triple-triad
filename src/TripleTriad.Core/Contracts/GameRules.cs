@@ -76,7 +76,7 @@ public enum GameRules
 
 public static class GameRulesExtensions
 {
-    private static readonly GameRules[] DisplayOrder =
+    public static IReadOnlyList<GameRules> SelectableRules { get; } =
     [
         GameRules.Open,
         GameRules.Random,
@@ -93,13 +93,15 @@ public static class GameRulesExtensions
         if (rules == GameRules.Default)
             return [nameof(GameRules.Default)];
 
-        var names = DisplayOrder
+        var names = SelectableRules
             .Where(rule => rules.Contains(rule))
-            .Select(rule => rule.ToString())
+            .Select(rule => rule.ToDisplayName())
             .ToArray();
 
         return names.Length == 0 ? [rules.ToString()] : names;
     }
+
+    public static string ToDisplayName(this GameRules rule) => rule.ToString();
 
     public static bool Contains(this GameRules rules, GameRules rule) =>
         rule != GameRules.Default && (rules & rule) == rule;

@@ -11,8 +11,12 @@ config_version=5
 [application]
 
 config/name="Triple Triad"
-run/main_scene="res://scenes/GameScene.tscn"
+run/main_scene="res://scenes/MainMenuScene.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+
+[autoload]
+
+GameFlowBridge="*res://src/Bridge/GameFlowBridge.cs"
 
 [display]
 

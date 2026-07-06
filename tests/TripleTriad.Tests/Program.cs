@@ -91,6 +91,7 @@ AssertStrictlyIncreasing(updates.Select(update => update.Sequence), "all session
 
 await AssertInMemoryTransportAsync();
 await AssertLobbyFlowAsync();
+await AssertLocalLobbyFlowAsync();
 
 Console.WriteLine("TripleTriad.Tests passed.");
 
@@ -256,6 +257,48 @@ static async ValueTask AssertLobbyFlowAsync()
             Command: PlayCardCommand { ClientRequestId: "future-handoff" },
         },
         "lobby stops reading after match start and leaves the transport usable");
+}
+
+static async ValueTask AssertLocalLobbyFlowAsync()
+{
+    var soloLobby = new LocalLobbySession(LocalLobbyMode.Solo, "Player");
+    var soloInitial = await soloLobby.StartAsync();
+
+    Assert(soloInitial.LocalSeat == Seat.Blue, "solo lobby starts the player as Blue");
+    Assert(soloInitial.CanStart, "solo lobby can start with an AI opponent");
+    Assert(GetPlayer(soloInitial, Seat.Blue).Kind == LobbyPlayerKind.Human, "solo lobby starts with a human player");
+    Assert(GetPlayer(soloInitial, Seat.Red).Kind == LobbyPlayerKind.AI, "solo lobby fills the opponent seat with AI");
+
+    await soloLobby.TakeSeatAsync(Seat.Red);
+    var soloSwapped = soloLobby.CurrentSnapshot;
+    Assert(soloSwapped.LocalSeat == Seat.Red, "solo lobby lets the player take the AI seat");
+    Assert(GetPlayer(soloSwapped, Seat.Red).Kind == LobbyPlayerKind.Human, "solo seat switch moves the player");
+    Assert(GetPlayer(soloSwapped, Seat.Blue).Kind == LobbyPlayerKind.AI, "solo seat switch moves AI to the opposite seat");
+
+    var selectedRules = GameRules.Open | GameRules.Same;
+    await soloLobby.SetRulesAsync(selectedRules);
+    AssertRules(soloLobby.CurrentSnapshot.Rules, selectedRules, "solo lobby stores selected rules");
+
+    await soloLobby.SetReadyAsync(true);
+    var soloSetup = await soloLobby.WaitForMatchStartAsync();
+    AssertRules(soloSetup.Rules, selectedRules, "solo match setup keeps selected rules");
+    Assert(GetPlayer(new LobbySnapshot(Seat.Red, soloSetup.Rules, soloSetup.Players, true, true), Seat.Blue).Kind == LobbyPlayerKind.AI, "solo match setup includes AI");
+
+    var hostLobby = new LocalLobbySession(LocalLobbyMode.Host, "Host");
+    var hostInitial = await hostLobby.StartAsync();
+    Assert(hostInitial.LocalSeat == Seat.Blue, "host lobby starts the player as Blue");
+    Assert(HasPlayer(hostInitial, Seat.Blue), "host lobby starts with one human player");
+    Assert(!HasPlayer(hostInitial, Seat.Red), "host lobby leaves the joining seat empty");
+    Assert(!hostInitial.CanStart, "host lobby cannot start without a joining player");
+
+    await hostLobby.TakeSeatAsync(Seat.Red);
+    var hostSwapped = hostLobby.CurrentSnapshot;
+    Assert(hostSwapped.LocalSeat == Seat.Red, "host lobby lets the player take a free seat");
+    Assert(!HasPlayer(hostSwapped, Seat.Blue), "host lobby leaves the previous seat empty after switching");
+    Assert(!hostSwapped.CanStart, "host lobby still cannot start with only one player");
+
+    await hostLobby.SetReadyAsync(true);
+    Assert(!hostLobby.CurrentSnapshot.CanStart, "host lobby ready click does not start without a joining player");
 }
 
 static async ValueTask<NetworkMessage> ReadNextNetworkMessageAsync(

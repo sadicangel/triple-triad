@@ -14,6 +14,10 @@ public interface ILobbySession
         GameRules rules,
         CancellationToken cancellationToken = default);
 
+    ValueTask TakeSeatAsync(
+        Seat seat,
+        CancellationToken cancellationToken = default);
+
     ValueTask SetReadyAsync(
         bool isReady,
         CancellationToken cancellationToken = default);
