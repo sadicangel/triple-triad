@@ -89,6 +89,24 @@ AssertSequence(eventOrder, ["CardPlayedEvent", "CardCapturedEvent", "TurnChanged
 
 AssertStrictlyIncreasing(updates.Select(update => update.Sequence), "all session updates are strictly ordered");
 
+var redSeatSession = new MockGameSession(catalog, Seat.Red, autoPlayOpponent: true);
+var redSeatUpdates = new List<GameSessionUpdate>();
+var redSeatEventOrder = new List<string>();
+await using var redSeatUpdateReader = redSeatSession.ReadUpdatesAsync().GetAsyncEnumerator();
+
+var redSeatOpening = await redSeatSession.StartAsync();
+await AppendNextUpdatesAsync(redSeatUpdateReader, redSeatUpdates, redSeatEventOrder, 6, "red-seat opening move updates");
+Assert(redSeatSession.ConnectionState == SessionConnectionState.Connected, "red-seat session connects before auto-playing the AI opener");
+Assert(redSeatOpening.LocalSeat == Seat.Red, "red-seat opening snapshot keeps Red as local seat");
+Assert(redSeatOpening.ActiveSeat == Seat.Red, "AI opener advances the first playable turn to local Red");
+Assert(redSeatOpening.Board.Count(cell => cell.Card?.Owner == Seat.Blue) == 1, "AI opener places one Blue card");
+Assert(redSeatOpening.Board.Count(cell => cell.CanDrop) == 8, "remaining empty cells accept the local Red move");
+Assert(redSeatOpening.Hands.Single(hand => hand.Seat == Seat.Red).Cards.All(card => card.IsPlayable), "local Red hand is playable after the AI opener");
+AssertSequence(
+    redSeatEventOrder,
+    ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected", "CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"],
+    "red-seat startup emits connection updates before the AI opening move");
+
 await AssertInMemoryTransportAsync();
 await AssertLobbyFlowAsync();
 await AssertLocalLobbyFlowAsync();

@@ -10,3 +10,60 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main_menu")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.025, 0.032, 0.045, 1)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Menu" type="VBoxContainer" parent="Center"]
+custom_minimum_size = Vector2(360, 360)
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="Title" type="Label" parent="Center/Menu"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 42
+text = "TRIPLE TRIAD"
+horizontal_alignment = 1
+
+[node name="SoloButton" type="Button" parent="Center/Menu"]
+custom_minimum_size = Vector2(320, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "SOLO"
+
+[node name="HostButton" type="Button" parent="Center/Menu"]
+custom_minimum_size = Vector2(320, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "HOST"
+
+[node name="JoinButton" type="Button" parent="Center/Menu"]
+custom_minimum_size = Vector2(320, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+disabled = true
+text = "JOIN"
+
+[node name="SettingsButton" type="Button" parent="Center/Menu"]
+custom_minimum_size = Vector2(320, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+disabled = true
+text = "SETTINGS"

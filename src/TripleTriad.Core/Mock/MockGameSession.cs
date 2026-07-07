@@ -58,6 +58,12 @@ public sealed class MockGameSession : IGameSession
         var snapshot = BuildSnapshot();
         PublishSnapshot(snapshot);
         PublishConnectionState(SessionConnectionState.Connected);
+        if (_autoPlayOpponent && _activeSeat != _localSeat)
+        {
+            AutoPlayOpponentTurn();
+            snapshot = CurrentSnapshot ?? snapshot;
+        }
+
         return ValueTask.FromResult(snapshot);
     }
 

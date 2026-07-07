@@ -10,3 +10,172 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.025, 0.032, 0.045, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_top = 36
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 36
+
+[node name="LobbyRoot" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="Header" type="HBoxContainer" parent="Margin/LobbyRoot"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="BackButton" type="Button" parent="Margin/LobbyRoot/Header"]
+custom_minimum_size = Vector2(120, 44)
+layout_mode = 2
+text = "BACK"
+
+[node name="TitleLabel" type="Label" parent="Margin/LobbyRoot/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 34
+text = "LOBBY"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Margin/LobbyRoot/Header"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Body" type="HBoxContainer" parent="Margin/LobbyRoot"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 28
+
+[node name="Seats" type="HBoxContainer" parent="Margin/LobbyRoot/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="BlueSeat" type="PanelContainer" parent="Margin/LobbyRoot/Body/Seats"]
+custom_minimum_size = Vector2(300, 260)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Box" type="VBoxContainer" parent="Margin/LobbyRoot/Body/Seats/BlueSeat"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="SeatLabel" type="Label" parent="Margin/LobbyRoot/Body/Seats/BlueSeat/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.18, 0.38, 0.86, 1)
+theme_override_font_sizes/font_size = 30
+text = "BLUE"
+horizontal_alignment = 1
+
+[node name="NameLabel" type="Label" parent="Margin/LobbyRoot/Body/Seats/BlueSeat/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 24
+text = "OPEN"
+horizontal_alignment = 1
+
+[node name="KindLabel" type="Label" parent="Margin/LobbyRoot/Body/Seats/BlueSeat/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 18
+text = "EMPTY"
+horizontal_alignment = 1
+
+[node name="ReadyLabel" type="Label" parent="Margin/LobbyRoot/Body/Seats/BlueSeat/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+
+[node name="TakeButton" type="Button" parent="Margin/LobbyRoot/Body/Seats/BlueSeat/Box"]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "TAKE"
+
+[node name="RedSeat" type="PanelContainer" parent="Margin/LobbyRoot/Body/Seats"]
+custom_minimum_size = Vector2(300, 260)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Box" type="VBoxContainer" parent="Margin/LobbyRoot/Body/Seats/RedSeat"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="SeatLabel" type="Label" parent="Margin/LobbyRoot/Body/Seats/RedSeat/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.18, 0.3, 1)
+theme_override_font_sizes/font_size = 30
+text = "RED"
+horizontal_alignment = 1
+
+[node name="NameLabel" type="Label" parent="Margin/LobbyRoot/Body/Seats/RedSeat/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 24
+text = "OPEN"
+horizontal_alignment = 1
+
+[node name="KindLabel" type="Label" parent="Margin/LobbyRoot/Body/Seats/RedSeat/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 18
+text = "EMPTY"
+horizontal_alignment = 1
+
+[node name="ReadyLabel" type="Label" parent="Margin/LobbyRoot/Body/Seats/RedSeat/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+
+[node name="TakeButton" type="Button" parent="Margin/LobbyRoot/Body/Seats/RedSeat/Box"]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "TAKE"
+
+[node name="RulesPanel" type="PanelContainer" parent="Margin/LobbyRoot/Body"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+
+[node name="RulesBox" type="VBoxContainer" parent="Margin/LobbyRoot/Body/RulesPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RulesTitle" type="Label" parent="Margin/LobbyRoot/Body/RulesPanel/RulesBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.92, 1)
+theme_override_font_sizes/font_size = 24
+text = "RULES"
+horizontal_alignment = 1
+
+[node name="RulesList" type="VBoxContainer" parent="Margin/LobbyRoot/Body/RulesPanel/RulesBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StartButton" type="Button" parent="Margin/LobbyRoot"]
+custom_minimum_size = Vector2(260, 56)
+layout_mode = 2
+text = "START GAME"
