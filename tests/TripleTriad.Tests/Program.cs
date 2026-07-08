@@ -1,8 +1,8 @@
 using TripleTriad.Contracts;
 using TripleTriad.Data;
 using TripleTriad.Lobby;
-using TripleTriad.Mock;
 using TripleTriad.Networking;
+using TripleTriad.Sessions;
 
 var repoRoot = FindRepoRoot();
 var catalogPath = Path.Combine(repoRoot, "src", "TripleTriad", "assets", "triple_triad", "cards.json");
@@ -11,25 +11,36 @@ var catalog = CardCatalog.Load(catalogPath);
 Assert(catalog.Cards.Count == 110, "loads all 110 FFVIII card definitions");
 Assert(catalog.Get(110).Name == "Squall", "loads card definitions by number");
 
-var unstarted = new MockGameSession(catalog, autoPlayOpponent: false);
+var unstarted = new LocalGameSession(catalog);
 Assert(unstarted.CurrentSnapshot is null, "current snapshot starts empty before StartAsync");
 await AssertThrowsAsync<InvalidOperationException>(
     async () => await unstarted.SendCommandAsync(new PlayCardCommand("unknown", 0, "before-start")),
     "SendCommandAsync before StartAsync throws");
 
-var session = new MockGameSession(catalog, autoPlayOpponent: false);
+var session = new LocalGameSession(catalog);
 var updates = new List<GameSessionUpdate>();
 var eventOrder = new List<string>();
-await using var updateReader = session.ReadUpdatesAsync().GetAsyncEnumerator();
+var secondSubscriberUpdates = new List<GameSessionUpdate>();
+var secondSubscriberEventOrder = new List<string>();
+await using var updateReader = session.SubscribeUpdatesAsync().GetAsyncEnumerator();
+await using var secondSubscriberReader = session.SubscribeUpdatesAsync().GetAsyncEnumerator();
 
 var initial = await session.StartAsync();
-await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 3, "StartAsync updates");
+await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 4, "StartAsync updates");
+await AppendNextUpdatesAsync(secondSubscriberReader, secondSubscriberUpdates, secondSubscriberEventOrder, 4, "second StartAsync subscriber updates");
 Assert(session.ConnectionState == SessionConnectionState.Connected, "StartAsync leaves the session connected");
 Assert(ReferenceEquals(session.CurrentSnapshot, initial), "StartAsync stores the initial snapshot cache");
 AssertSequence(
     eventOrder,
-    ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected"],
-    "StartAsync emits connecting/snapshot/connected updates");
+    ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected", "MatchStartedEvent"],
+    "StartAsync emits connecting/snapshot/connected/start updates");
+var matchStarted = updates.OfType<GameSessionEventUpdate>().Select(update => update.GameEvent).OfType<MatchStartedEvent>().Single();
+Assert(matchStarted.StartingSeat == Seat.Blue, "MatchStarted includes the starting seat");
+Assert(ReferenceEquals(matchStarted.Snapshot, initial), "MatchStarted includes the initial snapshot");
+AssertSequence(secondSubscriberEventOrder, eventOrder, "multiple session subscribers receive the same start updates");
+Assert(
+    secondSubscriberUpdates.OfType<GameSessionEventUpdate>().Any(update => update.GameEvent is MatchStartedEvent { StartingSeat: Seat.Blue }),
+    "second subscriber receives MatchStarted");
 eventOrder.Clear();
 
 var blueHand = initial.Hands.Single(hand => hand.Seat == Seat.Blue);
@@ -89,14 +100,18 @@ AssertSequence(eventOrder, ["CardPlayedEvent", "CardCapturedEvent", "TurnChanged
 
 AssertStrictlyIncreasing(updates.Select(update => update.Sequence), "all session updates are strictly ordered");
 
-var redSeatSession = new MockGameSession(catalog, Seat.Red, autoPlayOpponent: true);
+var redSeatSession = new LocalGameSession(catalog, Seat.Red);
+using var redSeatAiLifetime = new CancellationTokenSource();
+var redSeatAiTask = new AiSeatController(Seat.Blue).RunAsync(redSeatSession, redSeatAiLifetime.Token);
 var redSeatUpdates = new List<GameSessionUpdate>();
 var redSeatEventOrder = new List<string>();
-await using var redSeatUpdateReader = redSeatSession.ReadUpdatesAsync().GetAsyncEnumerator();
+await using var redSeatUpdateReader = redSeatSession.SubscribeUpdatesAsync().GetAsyncEnumerator();
 
-var redSeatOpening = await redSeatSession.StartAsync();
-await AppendNextUpdatesAsync(redSeatUpdateReader, redSeatUpdates, redSeatEventOrder, 6, "red-seat opening move updates");
+var redSeatInitial = await redSeatSession.StartAsync();
+await AppendNextUpdatesAsync(redSeatUpdateReader, redSeatUpdates, redSeatEventOrder, 7, "red-seat opening move updates");
+var redSeatOpening = redSeatSession.CurrentSnapshot ?? throw new InvalidOperationException("AI opener did not cache a snapshot.");
 Assert(redSeatSession.ConnectionState == SessionConnectionState.Connected, "red-seat session connects before auto-playing the AI opener");
+Assert(redSeatInitial.ActiveSeat == Seat.Blue, "red-seat initial snapshot starts with Blue");
 Assert(redSeatOpening.LocalSeat == Seat.Red, "red-seat opening snapshot keeps Red as local seat");
 Assert(redSeatOpening.ActiveSeat == Seat.Red, "AI opener advances the first playable turn to local Red");
 Assert(redSeatOpening.Board.Count(cell => cell.Card?.Owner == Seat.Blue) == 1, "AI opener places one Blue card");
@@ -104,15 +119,42 @@ Assert(redSeatOpening.Board.Count(cell => cell.CanDrop) == 8, "remaining empty c
 Assert(redSeatOpening.Hands.Single(hand => hand.Seat == Seat.Red).Cards.All(card => card.IsPlayable), "local Red hand is playable after the AI opener");
 AssertSequence(
     redSeatEventOrder,
-    ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected", "CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"],
-    "red-seat startup emits connection updates before the AI opening move");
+    ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected", "MatchStartedEvent", "CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"],
+    "red-seat startup emits connection/start updates before the AI opening move");
+await StopControllerAsync(redSeatAiLifetime, redSeatAiTask);
+
+var aiOpponentSession = new LocalGameSession(catalog);
+using var aiOpponentLifetime = new CancellationTokenSource();
+var aiOpponentTask = new AiSeatController(Seat.Red).RunAsync(aiOpponentSession, aiOpponentLifetime.Token);
+var aiOpponentUpdates = new List<GameSessionUpdate>();
+var aiOpponentEventOrder = new List<string>();
+await using var aiOpponentUpdateReader = aiOpponentSession.SubscribeUpdatesAsync().GetAsyncEnumerator();
+
+var aiOpponentInitial = await aiOpponentSession.StartAsync();
+await AppendNextUpdatesAsync(aiOpponentUpdateReader, aiOpponentUpdates, aiOpponentEventOrder, 4, "AI-opponent start updates");
+aiOpponentEventOrder.Clear();
+
+var aiOpponentBlueHand = aiOpponentInitial.Hands.Single(hand => hand.Seat == Seat.Blue);
+var playBeforeAi = GameCommandFactory.CreatePlayCardCommand(aiOpponentBlueHand.Cards[0], aiOpponentInitial.Board[8], "blue-before-ai");
+await aiOpponentSession.SendCommandAsync(playBeforeAi);
+await AppendNextUpdatesAsync(aiOpponentUpdateReader, aiOpponentUpdates, aiOpponentEventOrder, 6, "AI-opponent response updates");
+var afterAiOpponentResponse = aiOpponentSession.CurrentSnapshot ?? throw new InvalidOperationException("AI response did not cache a snapshot.");
+
+Assert(afterAiOpponentResponse.ActiveSeat == Seat.Blue, "AI response advances the turn back to local Blue");
+Assert(afterAiOpponentResponse.Board.Count(cell => cell.Card?.Owner == Seat.Red) == 1, "AI response places one Red card");
+Assert(afterAiOpponentResponse.Board[8].Card?.Owner == Seat.Blue, "human card remains on the selected slot");
+AssertSequence(
+    aiOpponentEventOrder,
+    ["CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged", "CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"],
+    "AI responds after receiving the turn-change snapshot");
+await StopControllerAsync(aiOpponentLifetime, aiOpponentTask);
 
 var selectedHands = new Dictionary<Seat, IReadOnlyList<int>>
 {
     [Seat.Blue] = new[] { 1, 2, 3, 4, 5 },
     [Seat.Red] = new[] { 6, 7, 8, 9, 10 },
 };
-var selectedSession = new MockGameSession(catalog, autoPlayOpponent: false, selectedCardNumbers: selectedHands);
+var selectedSession = new LocalGameSession(catalog, selectedCardNumbers: selectedHands);
 var selectedInitial = await selectedSession.StartAsync();
 AssertSequence(
     selectedInitial.Hands.Single(hand => hand.Seat == Seat.Blue).Cards.Select(card => card.CardNumber).ToArray(),
@@ -180,6 +222,19 @@ static async ValueTask AppendNextUpdatesAsync(
         updates.Add(reader.Current);
         eventOrder.Add(DescribeUpdate(reader.Current));
     }
+}
+
+static async ValueTask StopControllerAsync(
+    CancellationTokenSource lifetime,
+    Task controllerTask)
+{
+    lifetime.Cancel();
+
+    try
+    {
+        await controllerTask;
+    }
+    catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
 }
 
 static async ValueTask AssertInMemoryTransportAsync()

@@ -1,34 +1,34 @@
 ﻿using System.Threading.Channels;
+using System.Collections.Concurrent;
 using TripleTriad.Contracts;
 using TripleTriad.Data;
 
-namespace TripleTriad.Mock;
+namespace TripleTriad.Sessions;
 
-public sealed class MockGameSession : IGameSession
+public sealed class LocalGameSession : IGameSession
 {
-    private readonly Channel<GameSessionUpdate> _updates = Channel.CreateUnbounded<GameSessionUpdate>();
-    private readonly bool _autoPlayOpponent;
     private readonly CardState?[] _board = new CardState?[9];
     private readonly CardCatalog _catalog;
     private readonly Dictionary<Seat, List<CardState>> _hands;
     private readonly Seat _localSeat;
     private readonly bool _revealOpponentHand;
+    private readonly ConcurrentDictionary<long, ChannelWriter<GameSessionUpdate>> _subscribers = [];
+    private readonly SemaphoreSlim _stateGate = new(1, 1);
     private long _nextSequence;
+    private long _nextSubscriberId;
     private bool _isComplete;
     private Seat _activeSeat;
 
-    public MockGameSession(
+    public LocalGameSession(
         CardCatalog catalog,
         Seat localSeat = Seat.Blue,
         bool revealOpponentHand = false,
-        bool autoPlayOpponent = false,
         GameRules rules = GameRules.Default,
         IReadOnlyDictionary<Seat, IReadOnlyList<int>>? selectedCardNumbers = null)
     {
         _catalog = catalog;
         _localSeat = localSeat;
         _revealOpponentHand = revealOpponentHand;
-        _autoPlayOpponent = autoPlayOpponent;
         Rules = revealOpponentHand ? rules | GameRules.Open : rules;
         _activeSeat = Seat.Blue;
         _hands = new Dictionary<Seat, List<CardState>>
@@ -48,48 +48,59 @@ public sealed class MockGameSession : IGameSession
 
     public SessionConnectionState ConnectionState { get; private set; } = SessionConnectionState.NotStarted;
 
-    public IAsyncEnumerable<GameSessionUpdate> ReadUpdatesAsync(
+    public IAsyncEnumerable<GameSessionUpdate> SubscribeUpdatesAsync(
         CancellationToken cancellationToken = default) =>
-        _updates.Reader.ReadAllAsync(cancellationToken);
+        new GameSessionUpdateSubscription(this, cancellationToken);
 
-    public ValueTask<MatchSnapshot> StartAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<MatchSnapshot> StartAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        await _stateGate.WaitAsync(cancellationToken);
 
-        if (CurrentSnapshot is not null && ConnectionState == SessionConnectionState.Connected)
-            return ValueTask.FromResult(CurrentSnapshot);
-
-        PublishConnectionState(SessionConnectionState.Connecting);
-        var snapshot = BuildSnapshot();
-        PublishSnapshot(snapshot);
-        PublishConnectionState(SessionConnectionState.Connected);
-        if (_autoPlayOpponent && _activeSeat != _localSeat)
+        try
         {
-            AutoPlayOpponentTurn();
-            snapshot = CurrentSnapshot ?? snapshot;
-        }
+            if (CurrentSnapshot is not null && ConnectionState == SessionConnectionState.Connected)
+                return CurrentSnapshot;
 
-        return ValueTask.FromResult(snapshot);
+            PublishConnectionState(SessionConnectionState.Connecting);
+            var snapshot = BuildSnapshot();
+            PublishSnapshot(snapshot);
+            PublishConnectionState(SessionConnectionState.Connected);
+            PublishEvent(new MatchStartedEvent(snapshot.ActiveSeat, snapshot));
+
+            return snapshot;
+        }
+        finally
+        {
+            _stateGate.Release();
+        }
     }
 
-    public ValueTask SendCommandAsync(
+    public async ValueTask SendCommandAsync(
         GameCommand command,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        EnsureCanSubmit();
+        await _stateGate.WaitAsync(cancellationToken);
 
-        switch (command)
+        try
         {
-            case PlayCardCommand playCard:
-                PlayCard(playCard);
-                break;
-            default:
-                RejectUnknownCommand(command);
-                break;
-        }
+            EnsureCanSubmit();
 
-        return ValueTask.CompletedTask;
+            switch (command)
+            {
+                case PlayCardCommand playCard:
+                    PlayCard(playCard);
+                    break;
+                default:
+                    RejectUnknownCommand(command);
+                    break;
+            }
+        }
+        finally
+        {
+            _stateGate.Release();
+        }
     }
 
     private int[] ResolveHand(
@@ -209,22 +220,6 @@ public sealed class MockGameSession : IGameSession
 
         PublishEvent(new TurnChangedEvent(_activeSeat, command.ClientRequestId));
         PublishSnapshot(snapshot);
-
-        if (_autoPlayOpponent && _activeSeat != _localSeat)
-            AutoPlayOpponentTurn();
-    }
-
-    private void AutoPlayOpponentTurn()
-    {
-        if (_isComplete || !_hands.TryGetValue(_activeSeat, out var hand) || hand.Count == 0)
-            return;
-
-        var slot = Array.FindIndex(_board, card => card is null);
-        if (slot < 0)
-            return;
-
-        var card = hand[0];
-        PlayCard(new PlayCardCommand(card.InstanceId, slot, $"mock-{Guid.NewGuid():N}"));
     }
 
     private List<CapturedCard> CaptureAdjacentCards(int boardSlotIndex, CardState playedCard)
@@ -345,8 +340,29 @@ public sealed class MockGameSession : IGameSession
         PublishUpdate(new GameSessionConnectionStateUpdate(NextSequence(), state, reason));
     }
 
-    private void PublishUpdate(GameSessionUpdate update) =>
-        _updates.Writer.TryWrite(update);
+    private void PublishUpdate(GameSessionUpdate update)
+    {
+        foreach (var subscriber in _subscribers)
+        {
+            if (!subscriber.Value.TryWrite(update))
+                _subscribers.TryRemove(subscriber.Key, out _);
+        }
+    }
+
+    private long AddSubscriber(ChannelWriter<GameSessionUpdate> writer)
+    {
+        var subscriberId = Interlocked.Increment(ref _nextSubscriberId);
+        _subscribers[subscriberId] = writer;
+        return subscriberId;
+    }
+
+    private void RemoveSubscriber(
+        long subscriberId,
+        ChannelWriter<GameSessionUpdate> writer)
+    {
+        _subscribers.TryRemove(subscriberId, out _);
+        writer.TryComplete();
+    }
 
     private void Reject(string reason, PlayCardCommand command)
     {
@@ -401,4 +417,75 @@ public sealed class MockGameSession : IGameSession
     }
 
     private readonly record struct CapturedCard(int BoardSlotIndex, CardState Card, Seat PreviousOwner);
+
+    private sealed class GameSessionUpdateSubscription(
+        LocalGameSession session,
+        CancellationToken subscriptionCancellationToken) : IAsyncEnumerable<GameSessionUpdate>
+    {
+        public IAsyncEnumerator<GameSessionUpdate> GetAsyncEnumerator(
+            CancellationToken cancellationToken = default)
+        {
+            var channel = Channel.CreateUnbounded<GameSessionUpdate>();
+            var subscriberId = session.AddSubscriber(channel.Writer);
+            var linkedCancellation = CreateLinkedCancellation(
+                subscriptionCancellationToken,
+                cancellationToken);
+            var effectiveCancellationToken = linkedCancellation?.Token
+                ?? (subscriptionCancellationToken.CanBeCanceled
+                    ? subscriptionCancellationToken
+                    : cancellationToken);
+
+            return new Enumerator(
+                session,
+                subscriberId,
+                channel,
+                effectiveCancellationToken,
+                linkedCancellation);
+        }
+
+        private static CancellationTokenSource? CreateLinkedCancellation(
+            CancellationToken subscriptionCancellationToken,
+            CancellationToken enumerationCancellationToken)
+        {
+            if (!subscriptionCancellationToken.CanBeCanceled)
+                return enumerationCancellationToken.CanBeCanceled
+                    ? CancellationTokenSource.CreateLinkedTokenSource(enumerationCancellationToken)
+                    : null;
+
+            return enumerationCancellationToken.CanBeCanceled
+                ? CancellationTokenSource.CreateLinkedTokenSource(subscriptionCancellationToken, enumerationCancellationToken)
+                : null;
+        }
+
+        private sealed class Enumerator(
+            LocalGameSession session,
+            long subscriberId,
+            Channel<GameSessionUpdate> channel,
+            CancellationToken cancellationToken,
+            CancellationTokenSource? linkedCancellation) : IAsyncEnumerator<GameSessionUpdate>
+        {
+            public GameSessionUpdate Current { get; private set; } = null!;
+
+            public async ValueTask<bool> MoveNextAsync()
+            {
+                while (await channel.Reader.WaitToReadAsync(cancellationToken))
+                {
+                    if (channel.Reader.TryRead(out var update))
+                    {
+                        Current = update;
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                session.RemoveSubscriber(subscriberId, channel.Writer);
+                linkedCancellation?.Dispose();
+                return ValueTask.CompletedTask;
+            }
+        }
+    }
 }

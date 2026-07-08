@@ -8,7 +8,10 @@ public interface IGameSession
 
     SessionConnectionState ConnectionState { get; }
 
-    IAsyncEnumerable<GameSessionUpdate> ReadUpdatesAsync(
+    /// <summary>
+    /// Subscribes to future session updates. Each caller receives its own update stream.
+    /// </summary>
+    IAsyncEnumerable<GameSessionUpdate> SubscribeUpdatesAsync(
         CancellationToken cancellationToken = default);
 
     ValueTask<MatchSnapshot> StartAsync(CancellationToken cancellationToken = default);

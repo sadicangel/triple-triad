@@ -2,7 +2,7 @@ namespace TripleTriad.Contracts;
 
 public abstract record GameEvent(string? ClientRequestId);
 
-public sealed record MatchStartedEvent(MatchSnapshot Snapshot)
+public sealed record MatchStartedEvent(Seat StartingSeat, MatchSnapshot Snapshot)
     : GameEvent((string?)null);
 
 public sealed record CardPlayedEvent(

@@ -305,6 +305,8 @@ func _on_snapshot_changed(snapshot: Dictionary) -> void:
 
 func _on_game_event_raised(game_event: Dictionary) -> void:
 	match str(game_event.get("type", "")):
+		"match_started":
+			status_label.text = "%s STARTS" % str(game_event.get("starting_seat", "")).to_upper()
 		"card_played":
 			_clear_submitting_if_local(game_event)
 			_enqueue_animation(game_event)

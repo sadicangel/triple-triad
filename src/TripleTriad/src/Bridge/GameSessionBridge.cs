@@ -2,7 +2,7 @@
 using Godot;
 using TripleTriad.Contracts;
 using TripleTriad.Data;
-using TripleTriad.Mock;
+using TripleTriad.Sessions;
 using GodotArray = Godot.Collections.Array;
 using GodotDictionary = Godot.Collections.Dictionary;
 
@@ -32,11 +32,7 @@ public partial class GameSessionBridge : Node
         var catalog = CardCatalog.Load(ProjectSettings.GlobalizePath("res://assets/triple_triad/cards.json"));
         var flow = GetNodeOrNull<GameFlowBridge>("/root/GameFlowBridge");
         _session = flow?.GetActiveGameSession()
-            ?? new MockGameSession(
-                catalog,
-                Seat.Blue,
-                RevealOpponentHand,
-                AutoPlayOpponent);
+            ?? CreateFallbackSession(catalog);
         _ = PumpSessionUpdatesAsync(_sessionLifetime.Token);
 
         try
@@ -92,7 +88,7 @@ public partial class GameSessionBridge : Node
     {
         try
         {
-            await foreach (var update in _session.ReadUpdatesAsync(cancellationToken))
+            await foreach (var update in _session.SubscribeUpdatesAsync(cancellationToken))
                 EnqueueSessionUpdate(update);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -235,6 +231,7 @@ public partial class GameSessionBridge : Node
         {
             case MatchStartedEvent started:
                 serialized["type"] = "match_started";
+                serialized["starting_seat"] = started.StartingSeat.ToString();
                 serialized["snapshot"] = Serialize(started.Snapshot);
                 break;
             case CardPlayedEvent played:
@@ -271,5 +268,30 @@ public partial class GameSessionBridge : Node
         }
 
         return serialized;
+    }
+
+    private IGameSession CreateFallbackSession(CardCatalog catalog)
+    {
+        var session = new LocalGameSession(catalog, Seat.Blue, RevealOpponentHand);
+        if (AutoPlayOpponent)
+            _ = RunSeatControllerAsync(new AiSeatController(Seat.Red), session, _sessionLifetime.Token);
+
+        return session;
+    }
+
+    private async Task RunSeatControllerAsync(
+        ISeatController controller,
+        IGameSession session,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await controller.RunAsync(session, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            EnqueueSessionUpdate(new GameSessionConnectionStateUpdate(0, SessionConnectionState.Failed, ex.Message));
+        }
     }
 }

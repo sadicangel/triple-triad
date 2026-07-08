@@ -3,7 +3,7 @@ using Godot;
 using TripleTriad.Contracts;
 using TripleTriad.Data;
 using TripleTriad.Lobby;
-using TripleTriad.Mock;
+using TripleTriad.Sessions;
 using GodotArray = Godot.Collections.Array;
 using GodotDictionary = Godot.Collections.Dictionary;
 
@@ -193,15 +193,15 @@ public partial class GameFlowBridge : Node
             var setup = await _lobby.WaitForMatchStartAsync(_lobbyLifetime.Token);
             var snapshot = _lobby.CurrentSnapshot;
             var localSeat = snapshot.LocalSeat;
-            var hasAiOpponent = setup.Players.Any(player => player.Seat != localSeat && player.Kind == LobbyPlayerKind.AI);
             var catalog = GetCardCatalog();
-            _activeGameSession = new MockGameSession(
+            var localSession = new LocalGameSession(
                 catalog,
                 localSeat,
                 setup.Rules.Contains(GameRules.Open),
-                hasAiOpponent,
                 setup.Rules,
                 CreateSelectedHands(setup));
+            _activeGameSession = localSession;
+            StartSeatControllers(localSession, setup.Players);
 
             CallDeferred(nameof(ChangeToGameScene));
         }
@@ -354,6 +354,33 @@ public partial class GameFlowBridge : Node
 
     private CardCatalog GetCardCatalog() =>
         _cardCatalog ??= CardCatalog.Load(ProjectSettings.GlobalizePath("res://assets/triple_triad/cards.json"));
+
+    private void StartSeatControllers(
+        IGameSession session,
+        IEnumerable<LobbyPlayerSnapshot> players)
+    {
+        if (_lobbyLifetime is null)
+            return;
+
+        foreach (var player in players.Where(player => player.Kind == LobbyPlayerKind.AI))
+            _ = RunSeatControllerAsync(new AiSeatController(player.Seat), session, _lobbyLifetime.Token);
+    }
+
+    private async Task RunSeatControllerAsync(
+        ISeatController controller,
+        IGameSession session,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await controller.RunAsync(session, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            EmitSignal(SignalName.match_start_failed, ex.Message);
+        }
+    }
 
     private static IReadOnlyDictionary<Seat, IReadOnlyList<int>> CreateSelectedHands(MatchSetup setup) =>
         setup.CardSelections.ToDictionary(
