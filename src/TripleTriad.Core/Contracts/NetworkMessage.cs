@@ -20,6 +20,9 @@ public sealed record LobbyReadyChangedNetworkMessage(
     Seat Seat,
     bool IsReady) : LobbyNetworkMessage;
 
+public sealed record LobbyCardSelectionChangeRequestedNetworkMessage(
+    IReadOnlyList<int> CardNumbers) : LobbyNetworkMessage;
+
 public sealed record LobbySnapshotNetworkMessage(
     LobbySnapshot Snapshot) : LobbyNetworkMessage;
 

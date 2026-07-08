@@ -13,6 +13,7 @@ public sealed class LocalLobbySession : ILobbySession
 {
     private readonly TaskCompletionSource<MatchSetup> _matchStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Dictionary<Seat, LobbyPlayerSnapshot> _players = [];
+    private readonly Dictionary<Seat, int[]> _cardSelections = [];
     private readonly Channel<LobbyUpdate> _updates = Channel.CreateUnbounded<LobbyUpdate>();
     private readonly LocalLobbyMode _mode;
     private readonly string _localPlayerName;
@@ -84,11 +85,29 @@ public sealed class LocalLobbySession : ILobbySession
         _players.Remove(currentSeat);
         _players[seat] = localPlayer;
 
+        if (_cardSelections.Remove(currentSeat, out var selectedCards))
+            _cardSelections[seat] = selectedCards;
+
         if (_mode == LocalLobbyMode.Solo)
             EnsureSoloAi(seat.Opponent());
 
         CurrentSnapshot = CreateSnapshot(seat);
         PublishUpdate(new LobbySnapshotUpdate(NextSequence(), CurrentSnapshot));
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask SetSelectedCardsAsync(
+        IReadOnlyList<int> cardNumbers,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureStarted();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (_isMatchStarting)
+            return ValueTask.CompletedTask;
+
+        _cardSelections[CurrentSnapshot.LocalSeat] = LobbyCardSelectionRules.Validate(cardNumbers);
+        PublishSnapshot();
         return ValueTask.CompletedTask;
     }
 
@@ -133,7 +152,7 @@ public sealed class LocalLobbySession : ILobbySession
             return;
 
         _isMatchStarting = true;
-        var setup = new MatchSetup(_rules, CreatePlayerList());
+        var setup = new MatchSetup(_rules, CreatePlayerList(), CreateMatchCardSelections());
         CurrentSnapshot = CreateSnapshot(CurrentSnapshot.LocalSeat, isMatchStarting: true);
 
         PublishUpdate(new LobbySnapshotUpdate(NextSequence(), CurrentSnapshot));
@@ -172,12 +191,36 @@ public sealed class LocalLobbySession : ILobbySession
     }
 
     private LobbySnapshot CreateSnapshot(Seat localSeat, bool isMatchStarting = false) =>
-        new(localSeat, _rules, CreatePlayerList(), CanStart(localSeat), isMatchStarting);
+        new(localSeat, _rules, CreatePlayerList(), CreateVisibleCardSelections(localSeat), CanStart(localSeat), isMatchStarting);
 
     private LobbyPlayerSnapshot[] CreatePlayerList() =>
         _players.Values
             .OrderBy(player => player.Seat)
             .ToArray();
+
+    private LobbyCardSelectionSnapshot[] CreateVisibleCardSelections(Seat localSeat)
+    {
+        if (!_players.TryGetValue(localSeat, out var player)
+            || player.Kind != LobbyPlayerKind.Human
+            || !_cardSelections.TryGetValue(localSeat, out var cardNumbers))
+        {
+            return [];
+        }
+
+        return [new LobbyCardSelectionSnapshot(localSeat, cardNumbers.ToArray())];
+    }
+
+    private LobbyCardSelectionSnapshot[] CreateMatchCardSelections()
+    {
+        if (_rules.Contains(GameRules.Random))
+            return [];
+
+        return _cardSelections
+            .Where(pair => _players.TryGetValue(pair.Key, out var player) && player.Kind == LobbyPlayerKind.Human)
+            .OrderBy(pair => pair.Key)
+            .Select(pair => new LobbyCardSelectionSnapshot(pair.Key, pair.Value.ToArray()))
+            .ToArray();
+    }
 
     private void PublishUpdate(LobbyUpdate update) =>
         _updates.Writer.TryWrite(update);

@@ -22,7 +22,8 @@ public sealed class MockGameSession : IGameSession
         Seat localSeat = Seat.Blue,
         bool revealOpponentHand = false,
         bool autoPlayOpponent = false,
-        GameRules rules = GameRules.Default)
+        GameRules rules = GameRules.Default,
+        IReadOnlyDictionary<Seat, IReadOnlyList<int>>? selectedCardNumbers = null)
     {
         _catalog = catalog;
         _localSeat = localSeat;
@@ -32,8 +33,12 @@ public sealed class MockGameSession : IGameSession
         _activeSeat = Seat.Blue;
         _hands = new Dictionary<Seat, List<CardState>>
         {
-            [Seat.Red] = CreateHand(Seat.Red, [101, 103, 105, 107, 109]),
-            [Seat.Blue] = CreateHand(Seat.Blue, [102, 104, 106, 108, 110]),
+            [Seat.Red] = CreateHand(
+                Seat.Red,
+                ResolveHand(Seat.Red, selectedCardNumbers, [101, 103, 105, 107, 109])),
+            [Seat.Blue] = CreateHand(
+                Seat.Blue,
+                ResolveHand(Seat.Blue, selectedCardNumbers, [102, 104, 106, 108, 110])),
         };
     }
 
@@ -87,7 +92,44 @@ public sealed class MockGameSession : IGameSession
         return ValueTask.CompletedTask;
     }
 
-    private List<CardState> CreateHand(Seat seat, int[] cardNumbers) =>
+    private int[] ResolveHand(
+        Seat seat,
+        IReadOnlyDictionary<Seat, IReadOnlyList<int>>? selectedCardNumbers,
+        int[] fallbackCardNumbers)
+    {
+        if (Rules.Contains(GameRules.Random))
+            return CreateRandomHandNumbers();
+
+        if (selectedCardNumbers is null)
+            return fallbackCardNumbers;
+
+        return selectedCardNumbers.TryGetValue(seat, out var cardNumbers)
+            ? ValidateHand(cardNumbers)
+            : CreateRandomHandNumbers();
+    }
+
+    private int[] ValidateHand(IReadOnlyList<int> cardNumbers)
+    {
+        var normalized = LobbyCardSelectionRules.Validate(cardNumbers);
+        foreach (var cardNumber in normalized)
+            _catalog.Get(cardNumber);
+
+        return normalized;
+    }
+
+    private int[] CreateRandomHandNumbers()
+    {
+        if (_catalog.Cards.Count < LobbyCardSelectionRules.HandSize)
+            throw new InvalidOperationException("The card catalog does not contain enough cards to create a hand.");
+
+        return _catalog.Cards
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(LobbyCardSelectionRules.HandSize)
+            .Select(card => card.Number)
+            .ToArray();
+    }
+
+    private List<CardState> CreateHand(Seat seat, IReadOnlyList<int> cardNumbers) =>
         cardNumbers
             .Select(number => new CardState($"{seat.ToString().ToLowerInvariant()}-{number}", _catalog.Get(number), seat))
             .ToList();

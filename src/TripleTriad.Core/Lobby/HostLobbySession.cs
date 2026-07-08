@@ -7,6 +7,7 @@ public sealed class HostLobbySession : ILobbySession
 {
     private readonly CancellationTokenSource _lobbyLifetime = new();
     private readonly Dictionary<Seat, LobbyPlayerSnapshot> _players = [];
+    private readonly Dictionary<Seat, int[]> _cardSelections = [];
     private readonly TaskCompletionSource<MatchSetup> _matchStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Channel<LobbyUpdate> _updates = Channel.CreateUnbounded<LobbyUpdate>();
     private readonly IMatchTransport _transport;
@@ -55,6 +56,20 @@ public sealed class HostLobbySession : ILobbySession
         await PublishAndBroadcastSnapshotAsync(cancellationToken);
         await _transport.SendAsync(new LobbyRulesChangedNetworkMessage(_rules), cancellationToken);
         await TryStartMatchAsync(cancellationToken);
+    }
+
+    public async ValueTask SetSelectedCardsAsync(
+        IReadOnlyList<int> cardNumbers,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureStarted();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (_isMatchStarting)
+            return;
+
+        _cardSelections[Seat.Blue] = LobbyCardSelectionRules.Validate(cardNumbers);
+        await PublishAndBroadcastSnapshotAsync(cancellationToken);
     }
 
     public async ValueTask SetReadyAsync(
@@ -131,6 +146,13 @@ public sealed class HostLobbySession : ILobbySession
                 await _transport.SendAsync(new LobbyReadyChangedNetworkMessage(Seat.Red, ready.IsReady), cancellationToken);
                 await TryStartMatchAsync(cancellationToken);
                 break;
+            case LobbyCardSelectionChangeRequestedNetworkMessage selection:
+                if (!_players.ContainsKey(Seat.Red))
+                    _players[Seat.Red] = CreatePlayer(Seat.Red, "Guest", isReady: false);
+
+                _cardSelections[Seat.Red] = LobbyCardSelectionRules.Validate(selection.CardNumbers);
+                await PublishAndBroadcastSnapshotAsync(cancellationToken);
+                break;
             case LobbyRulesChangeRequestedNetworkMessage:
                 break;
         }
@@ -154,7 +176,7 @@ public sealed class HostLobbySession : ILobbySession
             return;
 
         _isMatchStarting = true;
-        var setup = new MatchSetup(_rules, CreatePlayerList());
+        var setup = new MatchSetup(_rules, CreatePlayerList(), CreateMatchCardSelections());
         CurrentSnapshot = CreateSnapshot(Seat.Blue, isMatchStarting: true);
 
         PublishUpdate(new LobbySnapshotUpdate(NextSequence(), CurrentSnapshot));
@@ -179,13 +201,37 @@ public sealed class HostLobbySession : ILobbySession
     {
         var players = CreatePlayerList();
         var canStart = HasReadyPlayer(Seat.Blue) && HasReadyPlayer(Seat.Red);
-        return new LobbySnapshot(localSeat, _rules, players, canStart, isMatchStarting);
+        return new LobbySnapshot(localSeat, _rules, players, CreateVisibleCardSelections(localSeat), canStart, isMatchStarting);
     }
 
     private LobbyPlayerSnapshot[] CreatePlayerList() =>
         _players.Values
             .OrderBy(player => player.Seat)
             .ToArray();
+
+    private LobbyCardSelectionSnapshot[] CreateVisibleCardSelections(Seat localSeat)
+    {
+        if (!_players.TryGetValue(localSeat, out var player)
+            || player.Kind != LobbyPlayerKind.Human
+            || !_cardSelections.TryGetValue(localSeat, out var cardNumbers))
+        {
+            return [];
+        }
+
+        return [new LobbyCardSelectionSnapshot(localSeat, cardNumbers.ToArray())];
+    }
+
+    private LobbyCardSelectionSnapshot[] CreateMatchCardSelections()
+    {
+        if (_rules.Contains(GameRules.Random))
+            return [];
+
+        return _cardSelections
+            .Where(pair => _players.TryGetValue(pair.Key, out var player) && player.Kind == LobbyPlayerKind.Human)
+            .OrderBy(pair => pair.Key)
+            .Select(pair => new LobbyCardSelectionSnapshot(pair.Key, pair.Value.ToArray()))
+            .ToArray();
+    }
 
     private bool CanStart() => HasReadyPlayer(Seat.Blue) && HasReadyPlayer(Seat.Red);
 

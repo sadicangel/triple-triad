@@ -107,6 +107,34 @@ AssertSequence(
     ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected", "CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"],
     "red-seat startup emits connection updates before the AI opening move");
 
+var selectedHands = new Dictionary<Seat, IReadOnlyList<int>>
+{
+    [Seat.Blue] = new[] { 1, 2, 3, 4, 5 },
+    [Seat.Red] = new[] { 6, 7, 8, 9, 10 },
+};
+var selectedSession = new MockGameSession(catalog, autoPlayOpponent: false, selectedCardNumbers: selectedHands);
+var selectedInitial = await selectedSession.StartAsync();
+AssertSequence(
+    selectedInitial.Hands.Single(hand => hand.Seat == Seat.Blue).Cards.Select(card => card.CardNumber).ToArray(),
+    [1, 2, 3, 4, 5],
+    "selected Blue hand appears in the initial snapshot in order");
+AssertSequence(
+    selectedInitial.Hands.Single(hand => hand.Seat == Seat.Red).Cards.Select(card => card.CardNumber).ToArray(),
+    [6, 7, 8, 9, 10],
+    "selected Red hand appears in the initial snapshot in order");
+
+var selectionValidationLobby = new LocalLobbySession(LocalLobbyMode.Solo, "Validator");
+await selectionValidationLobby.StartAsync();
+await AssertThrowsAsync<ArgumentException>(
+    async () => await selectionValidationLobby.SetSelectedCardsAsync([1, 2, 3, 4]),
+    "selected card validation rejects fewer than five cards");
+await AssertThrowsAsync<ArgumentException>(
+    async () => await selectionValidationLobby.SetSelectedCardsAsync([1, 1, 2, 3, 4]),
+    "selected card validation rejects duplicate cards");
+await AssertThrowsAsync<ArgumentOutOfRangeException>(
+    async () => await selectionValidationLobby.SetSelectedCardsAsync([1, 2, 3, 4, 111]),
+    "selected card validation rejects unknown cards");
+
 await AssertInMemoryTransportAsync();
 await AssertLobbyFlowAsync();
 await AssertLocalLobbyFlowAsync();
@@ -231,6 +259,36 @@ static async ValueTask AssertLobbyFlowAsync()
     AssertRules(hostRules.Rules, GameRules.Open, "host rule changes are visible locally");
     AssertRules(clientRules.Rules, GameRules.Open, "host rule changes are visible to the client");
 
+    var hostSelection = new[] { 1, 2, 3, 4, 5 };
+    var clientSelection = new[] { 6, 7, 8, 9, 10 };
+    await hostLobby.SetSelectedCardsAsync(hostSelection);
+
+    var hostSelected = await ReadLobbySnapshotAsync(
+        hostReader,
+        snapshot => SelectionEquals(snapshot, Seat.Blue, hostSelection),
+        "host selected-card snapshot");
+    var clientHiddenHostSelection = await ReadLobbySnapshotAsync(
+        clientReader,
+        snapshot => !HasSelection(snapshot, Seat.Blue) && !HasSelection(snapshot, Seat.Red),
+        "client snapshot without host selected cards");
+
+    AssertSelection(hostSelected, Seat.Blue, hostSelection, "host sees only the host selected cards");
+    AssertNoSelection(clientHiddenHostSelection, Seat.Blue, "client does not see host selected cards");
+
+    await clientLobby.SetSelectedCardsAsync(clientSelection);
+
+    var hostHiddenClientSelection = await ReadLobbySnapshotAsync(
+        hostReader,
+        snapshot => SelectionEquals(snapshot, Seat.Blue, hostSelection) && !HasSelection(snapshot, Seat.Red),
+        "host snapshot without client selected cards");
+    var clientSelected = await ReadLobbySnapshotAsync(
+        clientReader,
+        snapshot => SelectionEquals(snapshot, Seat.Red, clientSelection) && !HasSelection(snapshot, Seat.Blue),
+        "client selected-card snapshot");
+
+    AssertNoSelection(hostHiddenClientSelection, Seat.Red, "host does not see client selected cards");
+    AssertSelection(clientSelected, Seat.Red, clientSelection, "client sees only the client selected cards");
+
     await hostLobby.SetReadyAsync(true);
 
     await ReadLobbySnapshotAsync(
@@ -265,6 +323,8 @@ static async ValueTask AssertLobbyFlowAsync()
     AssertMatchSetupsEqual(clientStarted.Setup, clientSetup, "client match-start update matches WaitForMatchStartAsync");
     AssertMatchSetupsEqual(hostSetup, clientSetup, "host and client receive the same match setup");
     AssertRules(hostSetup.Rules, GameRules.Open, "match setup keeps the selected rules");
+    AssertSetupSelection(hostSetup, Seat.Blue, hostSelection, "match setup includes host selected cards");
+    AssertSetupSelection(hostSetup, Seat.Red, clientSelection, "match setup includes client selected cards");
 
     await clientTransport.SendAsync(new GameCommandNetworkMessage(new PlayCardCommand("future-card", 0, "future-handoff")));
 
@@ -287,11 +347,18 @@ static async ValueTask AssertLocalLobbyFlowAsync()
     Assert(GetPlayer(soloInitial, Seat.Blue).Kind == LobbyPlayerKind.Human, "solo lobby starts with a human player");
     Assert(GetPlayer(soloInitial, Seat.Red).Kind == LobbyPlayerKind.AI, "solo lobby fills the opponent seat with AI");
 
+    var soloSelection = new[] { 11, 12, 13, 14, 15 };
+    await soloLobby.SetSelectedCardsAsync(soloSelection);
+    AssertSelection(soloLobby.CurrentSnapshot, Seat.Blue, soloSelection, "solo lobby stores the local selected cards");
+    AssertNoSelection(soloLobby.CurrentSnapshot, Seat.Red, "solo lobby does not expose an opponent selection");
+
     await soloLobby.TakeSeatAsync(Seat.Red);
     var soloSwapped = soloLobby.CurrentSnapshot;
     Assert(soloSwapped.LocalSeat == Seat.Red, "solo lobby lets the player take the AI seat");
     Assert(GetPlayer(soloSwapped, Seat.Red).Kind == LobbyPlayerKind.Human, "solo seat switch moves the player");
     Assert(GetPlayer(soloSwapped, Seat.Blue).Kind == LobbyPlayerKind.AI, "solo seat switch moves AI to the opposite seat");
+    AssertSelection(soloSwapped, Seat.Red, soloSelection, "solo selected cards follow the player seat switch");
+    AssertNoSelection(soloSwapped, Seat.Blue, "solo seat switch does not expose selected cards to the AI seat");
 
     var selectedRules = GameRules.Open | GameRules.Same;
     await soloLobby.SetRulesAsync(selectedRules);
@@ -301,6 +368,15 @@ static async ValueTask AssertLocalLobbyFlowAsync()
     var soloSetup = await soloLobby.WaitForMatchStartAsync();
     AssertRules(soloSetup.Rules, selectedRules, "solo match setup keeps selected rules");
     Assert(GetPlayer(new LobbySnapshot(Seat.Red, soloSetup.Rules, soloSetup.Players, true, true), Seat.Blue).Kind == LobbyPlayerKind.AI, "solo match setup includes AI");
+    AssertSetupSelection(soloSetup, Seat.Red, soloSelection, "solo match setup includes selected cards for the local human");
+
+    var randomLobby = new LocalLobbySession(LocalLobbyMode.Solo, "Randomized");
+    await randomLobby.StartAsync();
+    await randomLobby.SetSelectedCardsAsync([1, 2, 3, 4, 5]);
+    await randomLobby.SetRulesAsync(GameRules.Random);
+    await randomLobby.SetReadyAsync(true);
+    var randomSetup = await randomLobby.WaitForMatchStartAsync();
+    Assert(randomSetup.CardSelections.Count == 0, "random rule ignores stored selected cards when creating match setup");
 
     var hostLobby = new LocalLobbySession(LocalLobbyMode.Host, "Host");
     var hostInitial = await hostLobby.StartAsync();
@@ -390,6 +466,46 @@ static bool IsReady(LobbySnapshot snapshot, Seat seat) =>
 static bool BothPlayersReady(LobbySnapshot snapshot) =>
     IsReady(snapshot, Seat.Blue) && IsReady(snapshot, Seat.Red);
 
+static bool HasSelection(LobbySnapshot snapshot, Seat seat) =>
+    snapshot.CardSelections.Any(selection => selection.Seat == seat);
+
+static bool SelectionEquals(
+    LobbySnapshot snapshot,
+    Seat seat,
+    IReadOnlyList<int> expectedCardNumbers) =>
+    snapshot.CardSelections.Any(selection =>
+        selection.Seat == seat
+        && selection.CardNumbers.SequenceEqual(expectedCardNumbers));
+
+static void AssertSelection(
+    LobbySnapshot snapshot,
+    Seat seat,
+    IReadOnlyList<int> expectedCardNumbers,
+    string message)
+{
+    var selection = snapshot.CardSelections.SingleOrDefault(selection => selection.Seat == seat);
+    if (selection is null)
+        throw new InvalidOperationException($"Assertion failed: {message}");
+
+    AssertSequence(selection.CardNumbers, expectedCardNumbers, message);
+}
+
+static void AssertSetupSelection(
+    MatchSetup setup,
+    Seat seat,
+    IReadOnlyList<int> expectedCardNumbers,
+    string message)
+{
+    var selection = setup.CardSelections.SingleOrDefault(selection => selection.Seat == seat);
+    if (selection is null)
+        throw new InvalidOperationException($"Assertion failed: {message}");
+
+    AssertSequence(selection.CardNumbers, expectedCardNumbers, message);
+}
+
+static void AssertNoSelection(LobbySnapshot snapshot, Seat seat, string message) =>
+    Assert(!HasSelection(snapshot, seat), message);
+
 static bool RulesEqual(GameRules actual, GameRules expected) =>
     actual == expected;
 
@@ -400,12 +516,16 @@ static void AssertMatchSetupsEqual(MatchSetup actual, MatchSetup expected, strin
 {
     AssertRules(actual.Rules, expected.Rules, message);
     Assert(actual.Players.Count == expected.Players.Count, message);
+    Assert(actual.CardSelections.Count == expected.CardSelections.Count, message);
 
     foreach (var expectedPlayer in expected.Players)
     {
         var actualPlayer = actual.Players.Single(player => player.Seat == expectedPlayer.Seat);
         Assert(actualPlayer == expectedPlayer, message);
     }
+
+    foreach (var expectedSelection in expected.CardSelections)
+        AssertSetupSelection(actual, expectedSelection.Seat, expectedSelection.CardNumbers, message);
 }
 
 static void Assert(bool condition, string message)

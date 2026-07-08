@@ -17,6 +17,7 @@ public partial class GameFlowBridge : Node
     private bool _isExiting;
     private ILobbySession? _lobby;
     private LocalLobbyMode? _lobbyMode;
+    private CardCatalog? _cardCatalog;
 
     [Signal] public delegate void lobby_snapshot_changedEventHandler(GodotDictionary snapshot);
 
@@ -38,6 +39,16 @@ public partial class GameFlowBridge : Node
         StartLocalLobby(LocalLobbyMode.Host);
 
     public GodotDictionary get_lobby_snapshot() => CurrentLobbySnapshot;
+
+    public GodotArray get_lobby_card_catalog()
+    {
+        var cards = new GodotArray();
+        var owner = _lobby?.CurrentSnapshot.LocalSeat ?? Seat.Blue;
+        foreach (var card in GetCardCatalog().Cards)
+            cards.Add(Serialize(card, owner));
+
+        return cards;
+    }
 
     public GodotArray get_rule_options()
     {
@@ -64,6 +75,22 @@ public partial class GameFlowBridge : Node
         var rules = _lobby.CurrentSnapshot.Rules;
         rules = enabled ? rules | rule : rules & ~rule;
         _ = SetRulesAsync(rules);
+    }
+
+    public void set_lobby_card_selection(GodotArray cardNumbers)
+    {
+        try
+        {
+            var numbers = new List<int>(cardNumbers.Count);
+            for (var index = 0; index < cardNumbers.Count; index++)
+                numbers.Add(cardNumbers[index].AsInt32());
+
+            _ = SetSelectedCardsAsync(numbers);
+        }
+        catch (Exception ex)
+        {
+            EmitSignal(SignalName.match_start_failed, ex.Message);
+        }
     }
 
     public void take_seat(string seatName)
@@ -121,6 +148,25 @@ public partial class GameFlowBridge : Node
         }
     }
 
+    private async Task SetSelectedCardsAsync(IReadOnlyList<int> cardNumbers)
+    {
+        if (_lobby is null || _lobbyLifetime is null)
+            return;
+
+        try
+        {
+            var normalized = LobbyCardSelectionRules.Validate(cardNumbers);
+            foreach (var cardNumber in normalized)
+                GetCardCatalog().Get(cardNumber);
+
+            await _lobby.SetSelectedCardsAsync(normalized, _lobbyLifetime.Token);
+        }
+        catch (Exception ex)
+        {
+            EmitSignal(SignalName.match_start_failed, ex.Message);
+        }
+    }
+
     private async Task TakeSeatAsync(Seat seat)
     {
         if (_lobby is null || _lobbyLifetime is null)
@@ -148,13 +194,14 @@ public partial class GameFlowBridge : Node
             var snapshot = _lobby.CurrentSnapshot;
             var localSeat = snapshot.LocalSeat;
             var hasAiOpponent = setup.Players.Any(player => player.Seat != localSeat && player.Kind == LobbyPlayerKind.AI);
-            var catalog = CardCatalog.Load(ProjectSettings.GlobalizePath("res://assets/triple_triad/cards.json"));
+            var catalog = GetCardCatalog();
             _activeGameSession = new MockGameSession(
                 catalog,
                 localSeat,
                 setup.Rules.Contains(GameRules.Open),
                 hasAiOpponent,
-                setup.Rules);
+                setup.Rules,
+                CreateSelectedHands(setup));
 
             CallDeferred(nameof(ChangeToGameScene));
         }
@@ -224,10 +271,25 @@ public partial class GameFlowBridge : Node
             ["local_seat"] = snapshot.LocalSeat.ToString(),
             ["rules"] = rules,
             ["can_start"] = snapshot.CanStart && !snapshot.IsMatchStarting,
+            ["can_select_cards"] = CanSelectCards(snapshot),
+            ["selected_cards"] = SerializeSelectedCards(snapshot),
             ["is_match_starting"] = snapshot.IsMatchStarting,
             ["status"] = FormatStatus(snapshot),
             ["seats"] = seats,
         };
+    }
+
+    private GodotArray SerializeSelectedCards(LobbySnapshot snapshot)
+    {
+        var cards = new GodotArray();
+        var selection = snapshot.CardSelections.FirstOrDefault(candidate => candidate.Seat == snapshot.LocalSeat);
+        if (selection is null)
+            return cards;
+
+        foreach (var cardNumber in selection.CardNumbers)
+            cards.Add(Serialize(GetCardCatalog().Get(cardNumber), snapshot.LocalSeat));
+
+        return cards;
     }
 
     private GodotDictionary SerializeSeat(LobbySnapshot snapshot, Seat seat)
@@ -270,6 +332,15 @@ public partial class GameFlowBridge : Node
         return targetPlayer is null || targetPlayer.Kind == LobbyPlayerKind.AI;
     }
 
+    private static bool CanSelectCards(LobbySnapshot snapshot)
+    {
+        if (snapshot.IsMatchStarting || snapshot.Rules.Contains(GameRules.Random))
+            return false;
+
+        var localPlayer = snapshot.Players.FirstOrDefault(player => player.Seat == snapshot.LocalSeat);
+        return localPlayer is { Kind: LobbyPlayerKind.Human, IsConnected: true };
+    }
+
     private static string FormatStatus(LobbySnapshot snapshot)
     {
         if (snapshot.IsMatchStarting)
@@ -280,4 +351,28 @@ public partial class GameFlowBridge : Node
 
         return "WAITING FOR PLAYER";
     }
+
+    private CardCatalog GetCardCatalog() =>
+        _cardCatalog ??= CardCatalog.Load(ProjectSettings.GlobalizePath("res://assets/triple_triad/cards.json"));
+
+    private static IReadOnlyDictionary<Seat, IReadOnlyList<int>> CreateSelectedHands(MatchSetup setup) =>
+        setup.CardSelections.ToDictionary(
+            selection => selection.Seat,
+            selection => (IReadOnlyList<int>)selection.CardNumbers.ToArray());
+
+    private static GodotDictionary Serialize(CardDefinition card, Seat owner) =>
+        new()
+        {
+            ["id"] = $"catalog-{card.Number}",
+            ["number"] = card.Number,
+            ["name"] = card.Name,
+            ["element"] = card.Element.ToString(),
+            ["owner"] = owner.ToString(),
+            ["face_up"] = true,
+            ["playable"] = false,
+            ["w"] = card.Ranks.West,
+            ["n"] = card.Ranks.North,
+            ["e"] = card.Ranks.East,
+            ["s"] = card.Ranks.South,
+        };
 }

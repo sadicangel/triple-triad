@@ -15,15 +15,20 @@ var layout_position := Vector2.ZERO
 var normal_z_index := 0
 var hover_z_index := 100
 var hover_tween: Tween
+var display_size := CARD_SIZE
 
 
 func _ready() -> void:
-    custom_minimum_size = CARD_SIZE
-    size = CARD_SIZE
-    pivot_offset = CARD_SIZE * 0.5
+    _apply_display_size()
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     mouse_entered.connect(_on_mouse_entered)
     mouse_exited.connect(_on_mouse_exited)
+
+
+func set_display_size(new_size: Vector2) -> void:
+    display_size = new_size
+    _apply_display_size()
+    queue_redraw()
 
 
 func setup(new_atlas: Texture2D) -> void:
@@ -208,6 +213,12 @@ func _reset_hover_state() -> void:
 
 func _update_mouse_filter() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP if not is_drag_preview and not is_drag_placeholder and bool(card.get("playable", false)) else Control.MOUSE_FILTER_IGNORE
+
+
+func _apply_display_size() -> void:
+    custom_minimum_size = display_size
+    size = display_size
+    pivot_offset = display_size * 0.5
 
 
 func _tooltip_text() -> String:

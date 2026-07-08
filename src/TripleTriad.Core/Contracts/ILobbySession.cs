@@ -18,6 +18,10 @@ public interface ILobbySession
         Seat seat,
         CancellationToken cancellationToken = default);
 
+    ValueTask SetSelectedCardsAsync(
+        IReadOnlyList<int> cardNumbers,
+        CancellationToken cancellationToken = default);
+
     ValueTask SetReadyAsync(
         bool isReady,
         CancellationToken cancellationToken = default);

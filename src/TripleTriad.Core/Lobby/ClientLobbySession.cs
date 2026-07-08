@@ -47,6 +47,16 @@ public sealed class ClientLobbySession : ILobbySession
         await _transport.SendAsync(new LobbyRulesChangeRequestedNetworkMessage(rules), cancellationToken);
     }
 
+    public async ValueTask SetSelectedCardsAsync(
+        IReadOnlyList<int> cardNumbers,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureStarted();
+        await _transport.SendAsync(
+            new LobbyCardSelectionChangeRequestedNetworkMessage(LobbyCardSelectionRules.Validate(cardNumbers)),
+            cancellationToken);
+    }
+
     public async ValueTask SetReadyAsync(
         bool isReady,
         CancellationToken cancellationToken = default)
