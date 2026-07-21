@@ -27,24 +27,15 @@ public sealed class AiSeatController(Seat seat) : ISeatController
         IGameSession session,
         CancellationToken cancellationToken = default)
     {
-        GameEvent? pendingTurnEvent = null;
-
-        await foreach (var update in session.SubscribeUpdatesAsync(cancellationToken))
+        await foreach (var gameEvent in session.SubscribeEventsAsync(cancellationToken))
         {
-            switch (update)
+            switch (gameEvent)
             {
-                case GameSessionEventUpdate { GameEvent: MatchStartedEvent started }:
+                case MatchStartedEvent started:
                     await TrySendCommandAsync(session, started, started.Snapshot, cancellationToken);
                     break;
-                case GameSessionEventUpdate { GameEvent: TurnChangedEvent turnChanged }:
-                    pendingTurnEvent = turnChanged.ActiveSeat == Seat
-                        ? turnChanged
-                        : null;
-                    break;
-                case GameSessionSnapshotUpdate snapshotUpdate when pendingTurnEvent is not null:
-                    var turnEvent = pendingTurnEvent;
-                    pendingTurnEvent = null;
-                    await TrySendCommandAsync(session, turnEvent, snapshotUpdate.Snapshot, cancellationToken);
+                case TurnChangedEvent turnChanged:
+                    await TrySendCommandAsync(session, turnChanged, turnChanged.Snapshot, cancellationToken);
                     break;
             }
         }

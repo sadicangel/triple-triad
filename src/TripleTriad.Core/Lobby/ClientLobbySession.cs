@@ -35,7 +35,7 @@ public sealed class ClientLobbySession : ILobbySession
 
         _started = true;
         _ = PumpTransportMessagesAsync(_lobbyLifetime.Token);
-        await _transport.SendAsync(new LobbyJoinRequestedNetworkMessage(_playerName), cancellationToken);
+        await _transport.SendAsync(NetworkMessage.Create(new LobbyJoinRequested(_playerName)), cancellationToken);
         return CurrentSnapshot;
     }
 
@@ -44,7 +44,7 @@ public sealed class ClientLobbySession : ILobbySession
         CancellationToken cancellationToken = default)
     {
         EnsureStarted();
-        await _transport.SendAsync(new LobbyRulesChangeRequestedNetworkMessage(rules), cancellationToken);
+        await _transport.SendAsync(NetworkMessage.Create(new LobbyRulesChangeRequested(rules)), cancellationToken);
     }
 
     public async ValueTask SetSelectedCardsAsync(
@@ -53,7 +53,7 @@ public sealed class ClientLobbySession : ILobbySession
     {
         EnsureStarted();
         await _transport.SendAsync(
-            new LobbyCardSelectionChangeRequestedNetworkMessage(LobbyCardSelectionRules.Validate(cardNumbers)),
+            NetworkMessage.Create(new LobbyCardSelectionChangeRequested(LobbyCardSelectionRules.Validate(cardNumbers))),
             cancellationToken);
     }
 
@@ -62,7 +62,7 @@ public sealed class ClientLobbySession : ILobbySession
         CancellationToken cancellationToken = default)
     {
         EnsureStarted();
-        await _transport.SendAsync(new LobbyReadyChangeRequestedNetworkMessage(isReady), cancellationToken);
+        await _transport.SendAsync(NetworkMessage.Create(new LobbyReadyChangeRequested(isReady)), cancellationToken);
     }
 
     public ValueTask TakeSeatAsync(
@@ -84,14 +84,14 @@ public sealed class ClientLobbySession : ILobbySession
         {
             await foreach (var message in _transport.ReadMessagesAsync(cancellationToken))
             {
-                switch (message)
+                switch (message.Payload)
                 {
-                    case LobbySnapshotNetworkMessage snapshot:
-                        CurrentSnapshot = Localize(snapshot.Snapshot);
+                    case LobbySnapshot snapshot:
+                        CurrentSnapshot = Localize(snapshot);
                         PublishUpdate(new LobbySnapshotUpdate(NextSequence(), CurrentSnapshot));
                         break;
-                    case MatchStartedNetworkMessage started:
-                        PublishMatchStarted(started.Setup);
+                    case MatchSetup setup:
+                        PublishMatchStarted(setup);
                         return;
                 }
             }

@@ -1,11 +1,10 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Godot;
 using TripleTriad.Contracts;
 using TripleTriad.Data;
 using TripleTriad.Lobby;
 using TripleTriad.Sessions;
 using GodotArray = Godot.Collections.Array;
-using GodotDictionary = Godot.Collections.Dictionary;
 
 namespace TripleTriad.Bridge;
 
@@ -19,11 +18,11 @@ public partial class GameFlowBridge : Node
     private LocalLobbyMode? _lobbyMode;
     private CardCatalog? _cardCatalog;
 
-    [Signal] public delegate void lobby_snapshot_changedEventHandler(GodotDictionary snapshot);
+    [Signal] public delegate void lobby_snapshot_changedEventHandler(LobbySnapshotResource snapshot);
 
     [Signal] public delegate void match_start_failedEventHandler(string reason);
 
-    public GodotDictionary CurrentLobbySnapshot { get; private set; } = [];
+    public LobbySnapshotResource? CurrentLobbySnapshot { get; private set; }
 
     public override void _ExitTree()
     {
@@ -38,14 +37,14 @@ public partial class GameFlowBridge : Node
     public void start_host_lobby() =>
         StartLocalLobby(LocalLobbyMode.Host);
 
-    public GodotDictionary get_lobby_snapshot() => CurrentLobbySnapshot;
+    public LobbySnapshotResource? get_lobby_snapshot() => CurrentLobbySnapshot;
 
     public GodotArray get_lobby_card_catalog()
     {
         var cards = new GodotArray();
         var owner = _lobby?.CurrentSnapshot.LocalSeat ?? Seat.Blue;
         foreach (var card in GetCardCatalog().Cards)
-            cards.Add(Serialize(card, owner));
+            cards.Add(CardSnapshotResource.FromDefinition(card, owner));
 
         return cards;
     }
@@ -57,11 +56,12 @@ public partial class GameFlowBridge : Node
 
         foreach (var rule in GameRulesExtensions.SelectableRules)
         {
-            options.Add(new GodotDictionary
-            {
-                ["name"] = rule.ToDisplayName(),
-                ["enabled"] = rules.Contains(rule),
-            });
+            options.Add(
+                new LobbyRuleOptionResource
+                {
+                    Name = rule.ToDisplayName(),
+                    Enabled = rules.Contains(rule),
+                });
         }
 
         return options;
@@ -107,6 +107,14 @@ public partial class GameFlowBridge : Node
             return;
 
         _ = StartMatchAsync();
+    }
+
+    public CardSnapshotResource get_lobby_card_back(string seatName)
+    {
+        var owner = Enum.TryParse(seatName, ignoreCase: true, out Seat seat)
+            ? seat
+            : Seat.Blue;
+        return CardSnapshotResource.CreateBack(owner);
     }
 
     public IGameSession? GetActiveGameSession() => _activeGameSession;
@@ -252,7 +260,7 @@ public partial class GameFlowBridge : Node
         EmitSignal(SignalName.lobby_snapshot_changed, CurrentLobbySnapshot);
     }
 
-    private GodotDictionary Serialize(LobbySnapshot snapshot)
+    private LobbySnapshotResource Serialize(LobbySnapshot snapshot)
     {
         var seats = new GodotArray
         {
@@ -264,18 +272,18 @@ public partial class GameFlowBridge : Node
         foreach (var rule in snapshot.Rules.ToDisplayNames())
             rules.Add(rule);
 
-        return new GodotDictionary
+        return new LobbySnapshotResource
         {
-            ["has_lobby"] = true,
-            ["mode"] = _lobbyMode?.ToString() ?? string.Empty,
-            ["local_seat"] = snapshot.LocalSeat.ToString(),
-            ["rules"] = rules,
-            ["can_start"] = snapshot.CanStart && !snapshot.IsMatchStarting,
-            ["can_select_cards"] = CanSelectCards(snapshot),
-            ["selected_cards"] = SerializeSelectedCards(snapshot),
-            ["is_match_starting"] = snapshot.IsMatchStarting,
-            ["status"] = FormatStatus(snapshot),
-            ["seats"] = seats,
+            HasLobby = true,
+            Mode = _lobbyMode?.ToString() ?? string.Empty,
+            LocalSeat = snapshot.LocalSeat.ToString(),
+            Rules = rules,
+            CanStart = snapshot.CanStart && !snapshot.IsMatchStarting,
+            CanSelectCards = CanSelectCards(snapshot),
+            SelectedCards = SerializeSelectedCards(snapshot),
+            IsMatchStarting = snapshot.IsMatchStarting,
+            Status = FormatStatus(snapshot),
+            Seats = seats,
         };
     }
 
@@ -287,35 +295,35 @@ public partial class GameFlowBridge : Node
             return cards;
 
         foreach (var cardNumber in selection.CardNumbers)
-            cards.Add(Serialize(GetCardCatalog().Get(cardNumber), snapshot.LocalSeat));
+            cards.Add(CardSnapshotResource.FromDefinition(GetCardCatalog().Get(cardNumber), snapshot.LocalSeat));
 
         return cards;
     }
 
-    private GodotDictionary SerializeSeat(LobbySnapshot snapshot, Seat seat)
+    private LobbySeatResource SerializeSeat(LobbySnapshot snapshot, Seat seat)
     {
         var player = snapshot.Players.FirstOrDefault(candidate => candidate.Seat == seat);
-        var serialized = new GodotDictionary
+        var serialized = new LobbySeatResource
         {
-            ["seat"] = seat.ToString(),
-            ["is_local"] = seat == snapshot.LocalSeat,
-            ["occupied"] = player is not null,
-            ["can_take"] = CanTakeSeat(snapshot, seat),
+            Seat = seat.ToString(),
+            IsLocal = seat == snapshot.LocalSeat,
+            Occupied = player is not null,
+            CanTake = CanTakeSeat(snapshot, seat),
         };
 
         if (player is null)
         {
-            serialized["name"] = "OPEN";
-            serialized["kind"] = "Empty";
-            serialized["ready"] = false;
-            serialized["connected"] = false;
+            serialized.Name = "OPEN";
+            serialized.Kind = "Empty";
+            serialized.Ready = false;
+            serialized.Connected = false;
             return serialized;
         }
 
-        serialized["name"] = player.PlayerName;
-        serialized["kind"] = player.Kind.ToString();
-        serialized["ready"] = player.IsReady;
-        serialized["connected"] = player.IsConnected;
+        serialized.Name = player.PlayerName;
+        serialized.Kind = player.Kind.ToString();
+        serialized.Ready = player.IsReady;
+        serialized.Connected = player.IsConnected;
         return serialized;
     }
 
@@ -387,19 +395,4 @@ public partial class GameFlowBridge : Node
             selection => selection.Seat,
             selection => (IReadOnlyList<int>)selection.CardNumbers.ToArray());
 
-    private static GodotDictionary Serialize(CardDefinition card, Seat owner) =>
-        new()
-        {
-            ["id"] = $"catalog-{card.Number}",
-            ["number"] = card.Number,
-            ["name"] = card.Name,
-            ["element"] = card.Element.ToString(),
-            ["owner"] = owner.ToString(),
-            ["face_up"] = true,
-            ["playable"] = false,
-            ["w"] = card.Ranks.West,
-            ["n"] = card.Ranks.North,
-            ["e"] = card.Ranks.East,
-            ["s"] = card.Ranks.South,
-        };
 }

@@ -64,8 +64,8 @@ func _ready() -> void:
     _build_rule_toggles()
     _build_card_selection_controls()
 
-    var snapshot: Dictionary = GameFlowBridge.get_lobby_snapshot()
-    if snapshot.is_empty() or not bool(snapshot.get("has_lobby", false)):
+    var snapshot = GameFlowBridge.get_lobby_snapshot()
+    if snapshot == null or not bool(snapshot.HasLobby):
         get_tree().call_deferred("change_scene_to_file", MAIN_MENU_SCENE)
         return
 
@@ -78,10 +78,10 @@ func _build_rule_toggles() -> void:
 
     rule_buttons.clear()
     for option in GameFlowBridge.get_rule_options():
-        var rule_name := str(option.get("name", ""))
+        var rule_name := str(option.Name)
         var toggle := CheckButton.new()
         toggle.text = rule_name.to_upper()
-        toggle.button_pressed = bool(option.get("enabled", false))
+        toggle.button_pressed = bool(option.Enabled)
         toggle.toggled.connect(_on_rule_toggled.bind(rule_name))
         rule_buttons[rule_name] = toggle
         rules_list.add_child(toggle)
@@ -109,49 +109,49 @@ func _build_card_selection_controls() -> void:
     _show_preview_placeholders()
 
 
-func _apply_snapshot(snapshot: Dictionary) -> void:
+func _apply_snapshot(snapshot) -> void:
     applying_snapshot = true
 
-    title_label.text = "%s LOBBY" % str(snapshot.get("mode", ""))
-    status_label.text = str(snapshot.get("status", "")).to_upper()
-    start_button.disabled = not bool(snapshot.get("can_start", false))
-    start_button.text = "STARTING" if bool(snapshot.get("is_match_starting", false)) else "START GAME"
+    title_label.text = "%s LOBBY" % str(snapshot.Mode)
+    status_label.text = str(snapshot.Status).to_upper()
+    start_button.disabled = not bool(snapshot.CanStart)
+    start_button.text = "STARTING" if bool(snapshot.IsMatchStarting) else "START GAME"
 
-    for seat_data in snapshot.get("seats", []):
-        var seat := str(seat_data.get("seat", ""))
+    for seat_data in snapshot.Seats:
+        var seat := str(seat_data.Seat)
         if seat.is_empty():
             continue
 
-        seat_name_labels[seat].text = str(seat_data.get("name", "OPEN")).to_upper()
-        seat_kind_labels[seat].text = str(seat_data.get("kind", "Empty")).to_upper()
-        seat_ready_labels[seat].text = "LOCAL" if bool(seat_data.get("is_local", false)) else (
-            "READY" if bool(seat_data.get("ready", false)) else ""
+        seat_name_labels[seat].text = str(seat_data.Name).to_upper()
+        seat_kind_labels[seat].text = str(seat_data.Kind).to_upper()
+        seat_ready_labels[seat].text = "LOCAL" if bool(seat_data.IsLocal) else (
+            "READY" if bool(seat_data.Ready) else ""
         )
-        seat_take_buttons[seat].visible = bool(seat_data.get("can_take", false))
-        seat_take_buttons[seat].disabled = not bool(seat_data.get("can_take", false))
+        seat_take_buttons[seat].visible = bool(seat_data.CanTake)
+        seat_take_buttons[seat].disabled = not bool(seat_data.CanTake)
 
     for option in GameFlowBridge.get_rule_options():
-        var rule_name := str(option.get("name", ""))
+        var rule_name := str(option.Name)
         if rule_buttons.has(rule_name):
-            rule_buttons[rule_name].set_pressed_no_signal(bool(option.get("enabled", false)))
+            rule_buttons[rule_name].set_pressed_no_signal(bool(option.Enabled))
 
     _apply_card_selection(snapshot)
 
     applying_snapshot = false
 
 
-func _apply_card_selection(snapshot: Dictionary) -> void:
-    var can_select := bool(snapshot.get("can_select_cards", false))
+func _apply_card_selection(snapshot) -> void:
+    var can_select := bool(snapshot.CanSelectCards)
     var is_random := _is_random_rule_enabled(snapshot)
     select_cards_button.disabled = not can_select
     card_preview_row.modulate = Color.WHITE if can_select or is_random else Color(1, 1, 1, 0.35)
 
     _clear_preview()
     if is_random:
-        _show_preview_backs(str(snapshot.get("local_seat", "Blue")))
+        _show_preview_backs(str(snapshot.LocalSeat))
         return
 
-    var selected_cards: Array = snapshot.get("selected_cards", [])
+    var selected_cards: Array = snapshot.SelectedCards
     if selected_cards.is_empty():
         _show_preview_placeholders()
         return
@@ -196,11 +196,11 @@ func _add_preview_placeholder() -> void:
 
 
 func _add_preview_back(owner: String) -> void:
-    var card_data := _card_back_data(owner)
+    var card_data = GameFlowBridge.get_lobby_card_back(owner)
     _add_preview_card(card_data)
 
 
-func _add_preview_card(card: Dictionary) -> void:
+func _add_preview_card(card) -> void:
     var slot := Control.new()
     slot.custom_minimum_size = PREVIEW_CARD_SIZE
     slot.clip_contents = true
@@ -211,16 +211,14 @@ func _add_preview_card(card: Dictionary) -> void:
     slot.add_child(view)
     view.set_display_size(PREVIEW_CARD_SIZE)
     view.setup(atlas)
-    var card_data := card.duplicate(true)
-    if not card_data.has("face_up"):
-        card_data["face_up"] = true
-    card_data["playable"] = false
+    var card_data = card.duplicate(true)
+    card_data.IsPlayable = false
     view.bind(card_data, false)
     slot.mouse_entered.connect(_show_full_preview.bind(card_data, slot))
     slot.mouse_exited.connect(_hide_full_preview)
 
 
-func _show_full_preview(card: Dictionary, anchor: Control) -> void:
+func _show_full_preview(card, anchor: Control) -> void:
     _hide_full_preview()
 
     var preview := CardViewScene.instantiate()
@@ -230,8 +228,8 @@ func _show_full_preview(card: Dictionary, anchor: Control) -> void:
     add_child(full_preview)
 
     preview.setup(atlas)
-    var card_data := card.duplicate(true)
-    card_data["playable"] = false
+    var card_data = card.duplicate(true)
+    card_data.IsPlayable = false
     preview.bind(card_data, false)
     preview.position = _full_preview_position(anchor)
 
@@ -267,31 +265,15 @@ func _full_preview_position(anchor: Control) -> Vector2:
     return position
 
 
-func _is_random_rule_enabled(snapshot: Dictionary) -> bool:
-    for rule in snapshot.get("rules", []):
+func _is_random_rule_enabled(snapshot) -> bool:
+    for rule in snapshot.Rules:
         if str(rule) == "Random":
             return true
 
     return false
 
 
-func _card_back_data(owner: String) -> Dictionary:
-    return {
-        "id": "card-back",
-        "number": 1,
-        "name": "Random card",
-        "element": "None",
-        "owner": owner,
-        "face_up": false,
-        "playable": false,
-        "w": 0,
-        "n": 0,
-        "e": 0,
-        "s": 0,
-    }
-
-
-func _on_lobby_snapshot_changed(snapshot: Dictionary) -> void:
+func _on_lobby_snapshot_changed(snapshot) -> void:
     _apply_snapshot(snapshot)
 
 

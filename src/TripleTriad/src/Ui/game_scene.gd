@@ -17,16 +17,16 @@ var status_label: Label
 var drag_layer: Control
 var drag_view: Control
 var drag_source_view: Control
-var dragged_card: Dictionary = {}
+var dragged_card = null
 var drag_origin := Vector2.ZERO
 var drag_offset := Vector2.ZERO
 var virtual_scale := 1.0
 var session_connected := false
 var has_snapshot := false
 var is_submitting := false
-var animation_queue: Array[Dictionary] = []
+var animation_queue: Array[Resource] = []
 var animations_running := false
-var pending_snapshot: Dictionary = {}
+var pending_snapshot = null
 var submitted_drag_views: Dictionary = {}
 
 
@@ -35,11 +35,10 @@ func _ready() -> void:
 	bridge = $GameSessionBridge
 	_build_scene()
 	_update_virtual_layout()
-	bridge.snapshot_changed.connect(_on_snapshot_changed)
 	bridge.game_event_raised.connect(_on_game_event_raised)
 	bridge.connection_state_changed.connect(_on_connection_state_changed)
-	var initial_snapshot: Dictionary = bridge.get_current_snapshot()
-	if initial_snapshot.is_empty():
+	var initial_snapshot = bridge.get_current_snapshot()
+	if initial_snapshot == null:
 		status_label.text = "CONNECTING"
 	else:
 		_apply_snapshot(initial_snapshot)
@@ -151,55 +150,110 @@ func _create_label(node_name: String, node_position: Vector2, node_size: Vector2
 	return label
 
 
-func _apply_snapshot(snapshot: Dictionary) -> void:
-	if snapshot.is_empty():
+func _apply_snapshot(snapshot) -> void:
+	if snapshot == null:
 		return
 
 	has_snapshot = true
-	var red_hand_data := {}
-	var blue_hand_data := {}
-	for hand in snapshot.get("hands", []):
-		if str(hand.get("seat", "")) == "Red":
+	var red_hand_data = null
+	var blue_hand_data = null
+	for hand in snapshot.Hands:
+		if _seat_name(hand.Seat) == "Red":
 			red_hand_data = hand
-		elif str(hand.get("seat", "")) == "Blue":
+		elif _seat_name(hand.Seat) == "Blue":
 			blue_hand_data = hand
 
 	red_hand.bind(red_hand_data, atlas)
 	blue_hand.bind(blue_hand_data, atlas)
 
-	var board: Array = snapshot.get("board", [])
+	var board: Array = snapshot.Board
 	for i in min(slots.size(), board.size()):
 		slots[i].bind(board[i], atlas)
 
-	score_label.text = "RED %s     BLUE %s" % [int(snapshot.get("red_score", 0)), int(snapshot.get("blue_score", 0))]
-	status_label.text = _format_winner(snapshot) if bool(snapshot.get("is_complete", false)) else "%s TURN     %s" % [
-		str(snapshot.get("active_seat", "")).to_upper(),
-		" / ".join(snapshot.get("rules", [])),
+	score_label.text = "RED %s     BLUE %s" % [int(snapshot.RedScore), int(snapshot.BlueScore)]
+	status_label.text = _format_winner(snapshot) if bool(snapshot.IsComplete) else "%s TURN     %s" % [
+		_seat_name(snapshot.ActiveSeat).to_upper(),
+		" / ".join(_rules_names(snapshot.Rules)),
 	]
 
 
-func _format_winner(snapshot: Dictionary) -> String:
-	var blue_score := int(snapshot.get("blue_score", 0))
-	var red_score := int(snapshot.get("red_score", 0))
+func _format_winner(snapshot) -> String:
+	if snapshot == null:
+		return "DRAW"
+
+	var blue_score := int(snapshot.BlueScore)
+	var red_score := int(snapshot.RedScore)
 	if blue_score == red_score:
 		return "DRAW"
 	return "BLUE WINS" if blue_score > red_score else "RED WINS"
 
 
-func _start_drag(card: Dictionary, source_view: Control) -> void:
-	if drag_view != null or is_submitting or not _session_ready() or not bool(card.get("playable", false)):
+func _seat_name(value) -> String:
+	match str(value):
+		"0":
+			return "Red"
+		"1":
+			return "Blue"
+		_:
+			return str(value)
+
+
+func _rules_names(value) -> Array:
+	var text := str(value)
+	if not text.is_valid_int():
+		var names := []
+		for part in text.split(","):
+			var name := part.strip_edges()
+			if not name.is_empty():
+				names.append(name)
+		return names if not names.is_empty() else ["Default"]
+
+	var flags := int(text)
+	if flags == 0:
+		return ["Default"]
+
+	var names := []
+	var rule_values := [
+		{"value": 1, "name": "Open"},
+		{"value": 2, "name": "Random"},
+		{"value": 4, "name": "Elemental"},
+		{"value": 8, "name": "Same"},
+		{"value": 16, "name": "Plus"},
+		{"value": 32, "name": "Wall"},
+		{"value": 64, "name": "Combo"},
+		{"value": 128, "name": "SuddenDeath"},
+	]
+	for rule in rule_values:
+		if (flags & int(rule["value"])) == int(rule["value"]):
+			names.append(str(rule["name"]))
+
+	return names if not names.is_empty() else [text]
+
+
+func _store_event_snapshot(snapshot, force_defer: bool = false) -> void:
+	if snapshot == null:
+		return
+	if force_defer or animations_running or not animation_queue.is_empty():
+		pending_snapshot = snapshot
 		return
 
-	dragged_card = card.duplicate(true)
+	_apply_snapshot(snapshot)
+
+
+func _start_drag(card, source_view: Control) -> void:
+	if drag_view != null or is_submitting or not _session_ready() or card == null or not bool(card.IsPlayable):
+		return
+
+	dragged_card = card
 	drag_source_view = source_view
 	_set_drag_placeholder(drag_source_view, true)
 	drag_origin = _screen_to_virtual(source_view.get_global_rect().position)
 	var virtual_mouse := _screen_to_virtual(get_global_mouse_position())
 	drag_offset = virtual_mouse - drag_origin
 
-	var face_card := dragged_card.duplicate(true)
-	face_card["face_up"] = true
-	face_card["playable"] = false
+	var face_card = dragged_card.duplicate(true)
+	face_card.IsFaceUp = true
+	face_card.IsPlayable = false
 
 	drag_view = CardViewScene.instantiate()
 	drag_view.name = "DraggedCard"
@@ -213,9 +267,9 @@ func _start_drag(card: Dictionary, source_view: Control) -> void:
 
 
 func _finish_drag() -> void:
-	var current_drag_view := drag_view
-	var current_card := dragged_card
-	if current_drag_view == null or current_card.is_empty():
+	var current_drag_view = drag_view
+	var current_card = dragged_card
+	if current_drag_view == null or current_card == null:
 		return
 
 	var virtual_mouse := _screen_to_virtual(get_global_mouse_position())
@@ -226,22 +280,22 @@ func _finish_drag() -> void:
 		_snap_back_drag_view(current_drag_view, drag_source_view)
 		drag_view = null
 		drag_source_view = null
-		dragged_card = {}
+		dragged_card = null
 		return
 
-	var slot_snapshot: Dictionary = drop_slot.get_snapshot()
+	var slot_snapshot = drop_slot.get_snapshot()
 	var request_id := "%s-%s" % [Time.get_ticks_usec(), randi()]
 	var current_source_view := drag_source_view
 	drag_view = null
 	drag_source_view = null
-	dragged_card = {}
+	dragged_card = null
 	submitted_drag_views[request_id] = {
 		"view": current_drag_view,
 		"origin": drag_origin,
 		"source_view": current_source_view,
 	}
 	is_submitting = true
-	bridge.submit_play_card(str(current_card.get("id", "")), int(slot_snapshot.get("index", -1)), request_id)
+	bridge.submit_play_card(str(current_card.CardInstanceId), int(slot_snapshot.Index), request_id)
 
 
 func _find_drop_slot(virtual_mouse: Vector2) -> Control:
@@ -287,7 +341,9 @@ func _finish_snap_back(view: Control, source_view: Control = null) -> void:
 	_set_drag_placeholder(source_view, false)
 	if view != null and is_instance_valid(view):
 		view.queue_free()
-	_apply_snapshot(bridge.get_current_snapshot())
+	var current_snapshot = bridge.get_current_snapshot()
+	if current_snapshot != null:
+		_apply_snapshot(current_snapshot)
 
 
 func _set_drag_placeholder(source_view: Control, enabled: bool) -> void:
@@ -295,35 +351,33 @@ func _set_drag_placeholder(source_view: Control, enabled: bool) -> void:
 		source_view.set_drag_placeholder(enabled)
 
 
-func _on_snapshot_changed(snapshot: Dictionary) -> void:
-	if animations_running or not animation_queue.is_empty():
-		pending_snapshot = snapshot.duplicate(true)
-		return
-
-	_apply_snapshot(snapshot)
-
-
-func _on_game_event_raised(game_event: Dictionary) -> void:
-	match str(game_event.get("type", "")):
+func _on_game_event_raised(game_event_resource: Resource) -> void:
+	var event_snapshot = game_event_resource.Snapshot
+	match str(game_event_resource.Type):
 		"match_started":
-			status_label.text = "%s STARTS" % str(game_event.get("starting_seat", "")).to_upper()
+			status_label.text = "%s STARTS" % _seat_name(game_event_resource.StartingSeat).to_upper()
+			_store_event_snapshot(event_snapshot)
 		"card_played":
-			_clear_submitting_if_local(game_event)
-			_enqueue_animation(game_event)
+			_clear_submitting_if_local(game_event_resource)
+			_enqueue_animation(game_event_resource)
+			_store_event_snapshot(event_snapshot, true)
 		"card_captured":
-			_enqueue_animation(game_event)
+			_enqueue_animation(game_event_resource)
+			_store_event_snapshot(event_snapshot, true)
 		"move_rejected":
-			_clear_submitting_if_local(game_event)
-			_handle_move_rejected(game_event)
-			status_label.text = str(game_event.get("reason", "")).to_upper()
+			_clear_submitting_if_local(game_event_resource)
+			_handle_move_rejected(game_event_resource)
+			status_label.text = str(game_event_resource.Reason).to_upper()
 		"turn_changed":
-			status_label.text = "%s TURN" % str(game_event.get("active_seat", "")).to_upper()
+			status_label.text = "%s TURN" % _seat_name(game_event_resource.ActiveSeat).to_upper()
+			_store_event_snapshot(event_snapshot)
 		"match_ended":
-			status_label.text = _format_winner(bridge.get_current_snapshot())
+			_store_event_snapshot(event_snapshot)
+			status_label.text = _format_winner(event_snapshot)
 
 
-func _on_connection_state_changed(connection_state: Dictionary) -> void:
-	var state := str(connection_state.get("state", ""))
+func _on_connection_state_changed(connection_state) -> void:
+	var state := str(connection_state.State)
 	session_connected = state == "Connected"
 
 	if session_connected:
@@ -336,7 +390,7 @@ func _on_connection_state_changed(connection_state: Dictionary) -> void:
 		_snap_back_drag_view(drag_view, drag_source_view)
 		drag_view = null
 		drag_source_view = null
-		dragged_card = {}
+		dragged_card = null
 
 	if state == "Failed" or state == "Disconnected" or state == "Closed":
 		is_submitting = false
@@ -352,7 +406,7 @@ func _on_connection_state_changed(connection_state: Dictionary) -> void:
 		"Connecting", "Reconnecting":
 			status_label.text = state.to_upper()
 		"Failed":
-			status_label.text = str(connection_state.get("reason", "SESSION FAILED")).to_upper()
+			status_label.text = str(connection_state.Reason if not str(connection_state.Reason).is_empty() else "SESSION FAILED").to_upper()
 		"Disconnected", "Closed":
 			status_label.text = state.to_upper()
 
@@ -361,8 +415,8 @@ func _session_ready() -> bool:
 	return session_connected and has_snapshot
 
 
-func _enqueue_animation(game_event: Dictionary) -> void:
-	animation_queue.append(game_event.duplicate(true))
+func _enqueue_animation(game_event: Resource) -> void:
+	animation_queue.append(game_event)
 	_drain_animation_queue()
 
 
@@ -372,41 +426,41 @@ func _drain_animation_queue() -> void:
 
 	animations_running = true
 	while not animation_queue.is_empty():
-		var game_event: Dictionary = animation_queue.pop_front()
-		match str(game_event.get("type", "")):
+		var game_event: Resource = animation_queue.pop_front()
+		match str(game_event.Type):
 			"card_played":
 				await _animate_card_played(game_event)
 			"card_captured":
 				await _animate_card_captured(game_event)
 
 	animations_running = false
-	if not pending_snapshot.is_empty():
-		var snapshot_to_apply := pending_snapshot.duplicate(true)
-		pending_snapshot = {}
+	if pending_snapshot != null:
+		var snapshot_to_apply = pending_snapshot
+		pending_snapshot = null
 		_apply_snapshot(snapshot_to_apply)
 
 
-func _animate_card_played(game_event: Dictionary) -> void:
-	var slot_index := int(game_event.get("board_slot_index", -1))
+func _animate_card_played(game_event: Resource) -> void:
+	var slot_index := int(game_event.BoardSlotIndex)
 	if slot_index < 0 or slot_index >= slots.size():
 		return
 
 	var slot: Control = slots[slot_index]
-	var card_data: Dictionary = game_event.get("card", {})
-	if card_data.is_empty():
+	var card_data = game_event.Card
+	if card_data == null:
 		return
 
 	card_data = card_data.duplicate(true)
-	card_data["face_up"] = true
-	card_data["playable"] = false
+	card_data.IsFaceUp = true
+	card_data.IsPlayable = false
 
-	var source_seat := str(game_event.get("source_seat", ""))
-	var source_hand_index := int(game_event.get("source_hand_index", -1))
+	var source_seat := _seat_name(game_event.SourceSeat)
+	var source_hand_index := int(game_event.SourceHandIndex)
 	var source_hand := _hand_for_seat(source_seat)
 	if source_hand != null:
 		source_hand.hide_card_at(source_hand_index)
 
-	var request_id := str(game_event.get("client_request_id", ""))
+	var request_id := str(game_event.ClientRequestId)
 	var view := _take_submitted_drag_view(request_id)
 	if view == null:
 		view = _create_flying_card_from_hand(card_data, source_hand, source_hand_index)
@@ -422,14 +476,14 @@ func _animate_card_played(game_event: Dictionary) -> void:
 	view.queue_free()
 
 
-func _animate_card_captured(game_event: Dictionary) -> void:
-	var slot_index := int(game_event.get("board_slot_index", -1))
+func _animate_card_captured(game_event: Resource) -> void:
+	var slot_index := int(game_event.BoardSlotIndex)
 	if slot_index < 0 or slot_index >= slots.size():
 		return
 
 	var slot: Control = slots[slot_index]
-	var card_data: Dictionary = game_event.get("card", {})
-	if card_data.is_empty():
+	var card_data = game_event.Card
+	if card_data == null:
 		return
 
 	var card_view: Control = slot.get_card_view()
@@ -440,8 +494,8 @@ func _animate_card_captured(game_event: Dictionary) -> void:
 	if card_view == null:
 		return
 
-	var previous_owner := str(game_event.get("previous_owner", ""))
-	var new_owner := str(game_event.get("new_owner", ""))
+	var previous_owner := _seat_name(game_event.PreviousOwner)
+	var new_owner := _seat_name(game_event.NewOwner)
 	var flip_sign := _flip_sign_for_owner(new_owner)
 	await card_view.animate_owner_flip(previous_owner, new_owner, flip_sign)
 	slot.preview_card(card_data, atlas)
@@ -457,7 +511,7 @@ func _take_submitted_drag_view(request_id: String) -> Control:
 	return view if is_instance_valid(view) else null
 
 
-func _create_flying_card_from_hand(card_data: Dictionary, source_hand: Control, source_hand_index: int) -> Control:
+func _create_flying_card_from_hand(card_data, source_hand: Control, source_hand_index: int) -> Control:
 	var source_view: Control = null
 	if source_hand != null:
 		source_view = source_hand.get_card_view_at(source_hand_index)
@@ -479,8 +533,8 @@ func _create_flying_card_from_hand(card_data: Dictionary, source_hand: Control, 
 	return view
 
 
-func _handle_move_rejected(game_event: Dictionary) -> void:
-	var request_id := str(game_event.get("client_request_id", ""))
+func _handle_move_rejected(game_event: Resource) -> void:
+	var request_id := str(game_event.ClientRequestId)
 	if request_id.is_empty() or not submitted_drag_views.has(request_id):
 		return
 
@@ -494,8 +548,8 @@ func _handle_move_rejected(game_event: Dictionary) -> void:
 	_snap_back_drag_view(view, entry.get("source_view", null))
 
 
-func _clear_submitting_if_local(game_event: Dictionary) -> void:
-	var request_id := str(game_event.get("client_request_id", ""))
+func _clear_submitting_if_local(game_event: Resource) -> void:
+	var request_id := str(game_event.ClientRequestId)
 	if not request_id.is_empty() and submitted_drag_views.has(request_id):
 		is_submitting = false
 

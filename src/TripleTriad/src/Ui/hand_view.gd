@@ -1,7 +1,7 @@
 extends Control
 class_name TriadHandView
 
-signal card_drag_requested(card: Dictionary, source_view: Control)
+signal card_drag_requested(card, source_view: Control)
 
 const CardViewScene := preload("res://scenes/CardView.tscn")
 const CARD_STEP_Y := 128.0
@@ -16,13 +16,17 @@ func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func bind(hand_data: Dictionary, atlas: Texture2D) -> void:
-    seat = str(hand_data.get("seat", ""))
+func bind(hand_data, atlas: Texture2D) -> void:
     _clear_cards()
+    if hand_data == null:
+        seat = ""
+        return
 
-    var cards: Array = hand_data.get("cards", [])
+    seat = _seat_name(hand_data.Seat)
+
+    var cards: Array = hand_data.Cards
     for i in cards.size():
-        var card: Dictionary = cards[i]
+        var card = cards[i]
         var view := CardViewScene.instantiate()
         add_child(view)
         view.setup(atlas)
@@ -62,5 +66,15 @@ func _clear_cards() -> void:
     card_views.clear()
 
 
-func _on_card_drag_requested(card: Dictionary, source_view: Control) -> void:
+func _on_card_drag_requested(card, source_view: Control) -> void:
     card_drag_requested.emit(card, source_view)
+
+
+func _seat_name(value) -> String:
+    match str(value):
+        "0":
+            return "Red"
+        "1":
+            return "Blue"
+        _:
+            return str(value)

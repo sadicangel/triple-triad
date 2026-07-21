@@ -1,5 +1,5 @@
-﻿using System.Threading.Channels;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
+using System.Threading.Channels;
 using TripleTriad.Contracts;
 using TripleTriad.Data;
 
@@ -12,8 +12,8 @@ public sealed class LocalGameSession : IGameSession
     private readonly Dictionary<Seat, List<CardState>> _hands;
     private readonly Seat _localSeat;
     private readonly bool _revealOpponentHand;
-    private readonly ConcurrentDictionary<long, ChannelWriter<GameSessionUpdate>> _subscribers = [];
-    private readonly SemaphoreSlim _stateGate = new(1, 1);
+    private readonly ConcurrentDictionary<long, ChannelWriter<GameEvent>> _subscribers = [];
+    private readonly SemaphoreSlim _stateGate = new SemaphoreSlim(1, 1);
     private long _nextSequence;
     private long _nextSubscriberId;
     private bool _isComplete;
@@ -48,9 +48,9 @@ public sealed class LocalGameSession : IGameSession
 
     public SessionConnectionState ConnectionState { get; private set; } = SessionConnectionState.NotStarted;
 
-    public IAsyncEnumerable<GameSessionUpdate> SubscribeUpdatesAsync(
+    public IAsyncEnumerable<GameEvent> SubscribeEventsAsync(
         CancellationToken cancellationToken = default) =>
-        new GameSessionUpdateSubscription(this, cancellationToken);
+        new GameSessionEventSubscription(this, cancellationToken);
 
     public async ValueTask<MatchSnapshot> StartAsync(CancellationToken cancellationToken = default)
     {
@@ -62,11 +62,11 @@ public sealed class LocalGameSession : IGameSession
             if (CurrentSnapshot is not null && ConnectionState == SessionConnectionState.Connected)
                 return CurrentSnapshot;
 
-            PublishConnectionState(SessionConnectionState.Connecting);
+            SetConnectionState(SessionConnectionState.Connecting);
             var snapshot = BuildSnapshot();
-            PublishSnapshot(snapshot);
-            PublishConnectionState(SessionConnectionState.Connected);
-            PublishEvent(new MatchStartedEvent(snapshot.ActiveSeat, snapshot));
+            CurrentSnapshot = snapshot;
+            SetConnectionState(SessionConnectionState.Connected);
+            PublishEvent(new MatchStartedEvent(NextSequence(), snapshot, snapshot.ActiveSeat));
 
             return snapshot;
         }
@@ -188,7 +188,10 @@ public sealed class LocalGameSession : IGameSession
             _activeSeat = _activeSeat.Opponent();
 
         var snapshot = BuildSnapshot();
+        CurrentSnapshot = snapshot;
         var playedEvent = new CardPlayedEvent(
+            NextSequence(),
+            snapshot,
             card.InstanceId,
             ToSnapshot(card, isFaceUp: true, isPlayable: false),
             handSeat,
@@ -203,6 +206,8 @@ public sealed class LocalGameSession : IGameSession
         {
             PublishEvent(
                 new CardCapturedEvent(
+                    NextSequence(),
+                    snapshot,
                     captured.Card.InstanceId,
                     ToSnapshot(captured.Card, isFaceUp: true, isPlayable: false),
                     captured.BoardSlotIndex,
@@ -213,13 +218,11 @@ public sealed class LocalGameSession : IGameSession
 
         if (_isComplete)
         {
-            PublishEvent(new MatchEndedEvent(GetWinner(snapshot), command.ClientRequestId));
-            PublishSnapshot(snapshot);
+            PublishEvent(new MatchEndedEvent(NextSequence(), snapshot, GetWinner(snapshot), command.ClientRequestId));
             return;
         }
 
-        PublishEvent(new TurnChangedEvent(_activeSeat, command.ClientRequestId));
-        PublishSnapshot(snapshot);
+        PublishEvent(new TurnChangedEvent(NextSequence(), snapshot, _activeSeat, command.ClientRequestId));
     }
 
     private List<CapturedCard> CaptureAdjacentCards(int boardSlotIndex, CardState playedCard)
@@ -323,33 +326,21 @@ public sealed class LocalGameSession : IGameSession
         && _activeSeat == _localSeat
         && _board[boardSlotIndex] is null;
 
-    private static CardSnapshot ToSnapshot(CardState card, bool isFaceUp, bool isPlayable) => new(card.InstanceId, card.Definition.Number, card.Definition.Name, card.Definition.Element, card.Definition.Ranks, card.Owner, isFaceUp, isPlayable);
+    private static CardSnapshot ToSnapshot(CardState card, bool isFaceUp, bool isPlayable) => new CardSnapshot(card.InstanceId, card.Definition.Number, card.Definition.Name, card.Definition.Element, card.Definition.Ranks, card.Owner, isFaceUp, isPlayable);
 
-    private void PublishSnapshot(MatchSnapshot snapshot)
-    {
-        CurrentSnapshot = snapshot;
-        PublishUpdate(new GameSessionSnapshotUpdate(NextSequence(), snapshot));
-    }
-
-    private void PublishEvent(GameEvent gameEvent) =>
-        PublishUpdate(new GameSessionEventUpdate(NextSequence(), gameEvent));
-
-    private void PublishConnectionState(SessionConnectionState state, string? reason = null)
-    {
+    private void SetConnectionState(SessionConnectionState state) =>
         ConnectionState = state;
-        PublishUpdate(new GameSessionConnectionStateUpdate(NextSequence(), state, reason));
-    }
 
-    private void PublishUpdate(GameSessionUpdate update)
+    private void PublishEvent(GameEvent gameEvent)
     {
         foreach (var subscriber in _subscribers)
         {
-            if (!subscriber.Value.TryWrite(update))
+            if (!subscriber.Value.TryWrite(gameEvent))
                 _subscribers.TryRemove(subscriber.Key, out _);
         }
     }
 
-    private long AddSubscriber(ChannelWriter<GameSessionUpdate> writer)
+    private long AddSubscriber(ChannelWriter<GameEvent> writer)
     {
         var subscriberId = Interlocked.Increment(ref _nextSubscriberId);
         _subscribers[subscriberId] = writer;
@@ -358,7 +349,7 @@ public sealed class LocalGameSession : IGameSession
 
     private void RemoveSubscriber(
         long subscriberId,
-        ChannelWriter<GameSessionUpdate> writer)
+        ChannelWriter<GameEvent> writer)
     {
         _subscribers.TryRemove(subscriberId, out _);
         writer.TryComplete();
@@ -366,7 +357,10 @@ public sealed class LocalGameSession : IGameSession
 
     private void Reject(string reason, PlayCardCommand command)
     {
+        var snapshot = CurrentSnapshot ?? BuildSnapshot();
         var rejected = new MoveRejectedEvent(
+            NextSequence(),
+            snapshot,
             reason,
             command.CardInstanceId,
             command.BoardSlotIndex,
@@ -377,7 +371,10 @@ public sealed class LocalGameSession : IGameSession
 
     private void RejectUnknownCommand(GameCommand command)
     {
+        var snapshot = CurrentSnapshot ?? BuildSnapshot();
         var rejected = new MoveRejectedEvent(
+            NextSequence(),
+            snapshot,
             "Unknown command.",
             null,
             null,
@@ -418,14 +415,14 @@ public sealed class LocalGameSession : IGameSession
 
     private readonly record struct CapturedCard(int BoardSlotIndex, CardState Card, Seat PreviousOwner);
 
-    private sealed class GameSessionUpdateSubscription(
+    private sealed class GameSessionEventSubscription(
         LocalGameSession session,
-        CancellationToken subscriptionCancellationToken) : IAsyncEnumerable<GameSessionUpdate>
+        CancellationToken subscriptionCancellationToken) : IAsyncEnumerable<GameEvent>
     {
-        public IAsyncEnumerator<GameSessionUpdate> GetAsyncEnumerator(
+        public IAsyncEnumerator<GameEvent> GetAsyncEnumerator(
             CancellationToken cancellationToken = default)
         {
-            var channel = Channel.CreateUnbounded<GameSessionUpdate>();
+            var channel = Channel.CreateUnbounded<GameEvent>();
             var subscriberId = session.AddSubscriber(channel.Writer);
             var linkedCancellation = CreateLinkedCancellation(
                 subscriptionCancellationToken,
@@ -460,11 +457,11 @@ public sealed class LocalGameSession : IGameSession
         private sealed class Enumerator(
             LocalGameSession session,
             long subscriberId,
-            Channel<GameSessionUpdate> channel,
+            Channel<GameEvent> channel,
             CancellationToken cancellationToken,
-            CancellationTokenSource? linkedCancellation) : IAsyncEnumerator<GameSessionUpdate>
+            CancellationTokenSource? linkedCancellation) : IAsyncEnumerator<GameEvent>
         {
-            public GameSessionUpdate Current { get; private set; } = null!;
+            public GameEvent Current { get; private set; } = null!;
 
             public async ValueTask<bool> MoveNextAsync()
             {

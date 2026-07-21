@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace TripleTriad.Data;
 
@@ -39,10 +39,12 @@ public readonly record struct CardRanks(int West, int North, int East, int South
 
 public sealed record CardDefinition(
     [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("edition")] int Edition,
+    [property: JsonPropertyName("edition")]
+    int Edition,
     [property: JsonPropertyName("number")] int Number,
     [property: JsonPropertyName("tier")] int Tier,
-    [property: JsonPropertyName("element")] Element Element,
+    [property: JsonPropertyName("element")]
+    Element Element,
     [property: JsonPropertyName("w")] int W,
     [property: JsonPropertyName("n")] int N,
     [property: JsonPropertyName("e")] int E,

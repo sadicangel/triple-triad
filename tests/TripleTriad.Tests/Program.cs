@@ -18,28 +18,28 @@ await AssertThrowsAsync<InvalidOperationException>(
     "SendCommandAsync before StartAsync throws");
 
 var session = new LocalGameSession(catalog);
-var updates = new List<GameSessionUpdate>();
+var events = new List<GameEvent>();
 var eventOrder = new List<string>();
-var secondSubscriberUpdates = new List<GameSessionUpdate>();
+var secondSubscriberEvents = new List<GameEvent>();
 var secondSubscriberEventOrder = new List<string>();
-await using var updateReader = session.SubscribeUpdatesAsync().GetAsyncEnumerator();
-await using var secondSubscriberReader = session.SubscribeUpdatesAsync().GetAsyncEnumerator();
+await using var eventReader = session.SubscribeEventsAsync().GetAsyncEnumerator();
+await using var secondSubscriberReader = session.SubscribeEventsAsync().GetAsyncEnumerator();
 
 var initial = await session.StartAsync();
-await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 4, "StartAsync updates");
-await AppendNextUpdatesAsync(secondSubscriberReader, secondSubscriberUpdates, secondSubscriberEventOrder, 4, "second StartAsync subscriber updates");
+await AppendNextEventsAsync(eventReader, events, eventOrder, 1, "StartAsync events");
+await AppendNextEventsAsync(secondSubscriberReader, secondSubscriberEvents, secondSubscriberEventOrder, 1, "second StartAsync subscriber events");
 Assert(session.ConnectionState == SessionConnectionState.Connected, "StartAsync leaves the session connected");
 Assert(ReferenceEquals(session.CurrentSnapshot, initial), "StartAsync stores the initial snapshot cache");
 AssertSequence(
     eventOrder,
-    ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected", "MatchStartedEvent"],
-    "StartAsync emits connecting/snapshot/connected/start updates");
-var matchStarted = updates.OfType<GameSessionEventUpdate>().Select(update => update.GameEvent).OfType<MatchStartedEvent>().Single();
+    ["MatchStartedEvent"],
+    "StartAsync emits the match-start event");
+var matchStarted = events.OfType<MatchStartedEvent>().Single();
 Assert(matchStarted.StartingSeat == Seat.Blue, "MatchStarted includes the starting seat");
 Assert(ReferenceEquals(matchStarted.Snapshot, initial), "MatchStarted includes the initial snapshot");
 AssertSequence(secondSubscriberEventOrder, eventOrder, "multiple session subscribers receive the same start updates");
 Assert(
-    secondSubscriberUpdates.OfType<GameSessionEventUpdate>().Any(update => update.GameEvent is MatchStartedEvent { StartingSeat: Seat.Blue }),
+    secondSubscriberEvents.OfType<MatchStartedEvent>().Any(update => update.StartingSeat == Seat.Blue),
     "second subscriber receives MatchStarted");
 eventOrder.Clear();
 
@@ -54,27 +54,28 @@ Assert(redHand.Cards.All(card => !card.IsFaceUp && !card.IsPlayable), "opponent 
 Assert(initial.Board.Count(cell => cell.CanDrop) == 9, "all empty board cells accept the local first move");
 
 await session.SendCommandAsync(new PlayCardCommand(blueHand.Cards[1].CardInstanceId, 99, "invalid-slot"));
-await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 1, "invalid move update");
-Assert(updates.OfType<GameSessionEventUpdate>().Last().GameEvent is MoveRejectedEvent, "invalid slot emits MoveRejected on the update stream");
+await AppendNextEventsAsync(eventReader, events, eventOrder, 1, "invalid move event");
+Assert(events.Last() is MoveRejectedEvent, "invalid slot emits MoveRejected on the event stream");
 AssertSequence(eventOrder, ["MoveRejectedEvent"], "rejected move emits only rejection event");
 eventOrder.Clear();
 
 var playBlue = GameCommandFactory.CreatePlayCardCommand(blueHand.Cards[1], initial.Board[0], "blue-play");
 await session.SendCommandAsync(playBlue);
-await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 3, "blue move updates");
+await AppendNextEventsAsync(eventReader, events, eventOrder, 2, "blue move events");
 
 var afterBlue = session.CurrentSnapshot ?? throw new InvalidOperationException("Accepted move did not cache a snapshot.");
-Assert(ReferenceEquals(session.CurrentSnapshot, updates.OfType<GameSessionSnapshotUpdate>().Last().Snapshot), "accepted move caches the emitted snapshot");
+Assert(ReferenceEquals(session.CurrentSnapshot, events.OfType<TurnChangedEvent>().Last().Snapshot), "accepted move caches the emitted event snapshot");
 Assert(afterBlue.Board[0].Card?.CardInstanceId == playBlue.CardInstanceId, "accepted move places the selected card");
 Assert(afterBlue.ActiveSeat == Seat.Red, "accepted move advances the turn");
 Assert(afterBlue.Hands.Single(hand => hand.Seat == Seat.Blue).Cards.All(card => !card.IsPlayable), "local cards are not playable during opponent turn");
-var bluePlayed = updates.OfType<GameSessionEventUpdate>().Select(update => update.GameEvent).OfType<CardPlayedEvent>().Single();
+var bluePlayed = events.OfType<CardPlayedEvent>().Single();
 Assert(bluePlayed.BoardSlotIndex == 0, "accepted move raises CardPlayed");
 Assert(bluePlayed.Card.CardInstanceId == playBlue.CardInstanceId, "CardPlayed includes played card snapshot");
 Assert(bluePlayed.Card.Owner == Seat.Blue, "CardPlayed card snapshot keeps played owner");
 Assert(bluePlayed.SourceSeat == Seat.Blue, "CardPlayed includes source seat");
 Assert(bluePlayed.SourceHandIndex == 1, "CardPlayed includes source hand index");
-AssertSequence(eventOrder, ["CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"], "accepted move emits play/turn before snapshot");
+Assert(ReferenceEquals(bluePlayed.Snapshot, afterBlue), "CardPlayed carries the final move snapshot");
+AssertSequence(eventOrder, ["CardPlayedEvent", "TurnChangedEvent"], "accepted move emits play then turn");
 eventOrder.Clear();
 
 AssertThrows<InvalidOperationException>(
@@ -82,33 +83,34 @@ AssertThrows<InvalidOperationException>(
     "command factory rejects occupied slots");
 
 await session.SendCommandAsync(new PlayCardCommand(redHand.Cards[0].CardInstanceId, 1, "red-play"));
-await AppendNextUpdatesAsync(updateReader, updates, eventOrder, 4, "red move updates");
+await AppendNextEventsAsync(eventReader, events, eventOrder, 3, "red move events");
 var afterRed = session.CurrentSnapshot ?? throw new InvalidOperationException("Opponent move did not cache a snapshot.");
 
 Assert(afterRed.Board[1].Card?.Owner == Seat.Red, "opponent card is placed");
 Assert(afterRed.Board[0].Card?.Owner == Seat.Red, "simple adjacent rank capture flips ownership");
 Assert(afterRed.RedScore == 6 && afterRed.BlueScore == 4, "capture updates score totals");
-var redPlayed = updates.OfType<GameSessionEventUpdate>().Select(update => update.GameEvent).OfType<CardPlayedEvent>().Last();
+var redPlayed = events.OfType<CardPlayedEvent>().Last();
 Assert(redPlayed.SourceSeat == Seat.Red, "opponent CardPlayed includes source seat");
 Assert(redPlayed.SourceHandIndex == 0, "opponent CardPlayed includes source hand index");
-var captured = updates.OfType<GameSessionEventUpdate>().Select(update => update.GameEvent).OfType<CardCapturedEvent>().Single();
+var captured = events.OfType<CardCapturedEvent>().Single();
 Assert(captured.BoardSlotIndex == 0, "capture raises CardCaptured for the flipped board card");
 Assert(captured.PreviousOwner == Seat.Blue, "capture event includes previous owner");
 Assert(captured.NewOwner == Seat.Red, "capture event includes new owner");
 Assert(captured.Card.Owner == Seat.Red, "capture event includes post-capture card snapshot");
-AssertSequence(eventOrder, ["CardPlayedEvent", "CardCapturedEvent", "TurnChangedEvent", "SnapshotChanged"], "capture move emits play/capture/turn before snapshot");
+Assert(ReferenceEquals(captured.Snapshot, afterRed), "capture event carries the final move snapshot");
+AssertSequence(eventOrder, ["CardPlayedEvent", "CardCapturedEvent", "TurnChangedEvent"], "capture move emits play/capture/turn");
 
-AssertStrictlyIncreasing(updates.Select(update => update.Sequence), "all session updates are strictly ordered");
+AssertStrictlyIncreasing(events.Select(update => update.Sequence), "all session events are strictly ordered");
 
 var redSeatSession = new LocalGameSession(catalog, Seat.Red);
 using var redSeatAiLifetime = new CancellationTokenSource();
 var redSeatAiTask = new AiSeatController(Seat.Blue).RunAsync(redSeatSession, redSeatAiLifetime.Token);
-var redSeatUpdates = new List<GameSessionUpdate>();
+var redSeatEvents = new List<GameEvent>();
 var redSeatEventOrder = new List<string>();
-await using var redSeatUpdateReader = redSeatSession.SubscribeUpdatesAsync().GetAsyncEnumerator();
+await using var redSeatEventReader = redSeatSession.SubscribeEventsAsync().GetAsyncEnumerator();
 
 var redSeatInitial = await redSeatSession.StartAsync();
-await AppendNextUpdatesAsync(redSeatUpdateReader, redSeatUpdates, redSeatEventOrder, 7, "red-seat opening move updates");
+await AppendNextEventsAsync(redSeatEventReader, redSeatEvents, redSeatEventOrder, 3, "red-seat opening move events");
 var redSeatOpening = redSeatSession.CurrentSnapshot ?? throw new InvalidOperationException("AI opener did not cache a snapshot.");
 Assert(redSeatSession.ConnectionState == SessionConnectionState.Connected, "red-seat session connects before auto-playing the AI opener");
 Assert(redSeatInitial.ActiveSeat == Seat.Blue, "red-seat initial snapshot starts with Blue");
@@ -119,25 +121,25 @@ Assert(redSeatOpening.Board.Count(cell => cell.CanDrop) == 8, "remaining empty c
 Assert(redSeatOpening.Hands.Single(hand => hand.Seat == Seat.Red).Cards.All(card => card.IsPlayable), "local Red hand is playable after the AI opener");
 AssertSequence(
     redSeatEventOrder,
-    ["ConnectionState:Connecting", "SnapshotChanged", "ConnectionState:Connected", "MatchStartedEvent", "CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"],
-    "red-seat startup emits connection/start updates before the AI opening move");
+    ["MatchStartedEvent", "CardPlayedEvent", "TurnChangedEvent"],
+    "red-seat startup emits match start before the AI opening move");
 await StopControllerAsync(redSeatAiLifetime, redSeatAiTask);
 
 var aiOpponentSession = new LocalGameSession(catalog);
 using var aiOpponentLifetime = new CancellationTokenSource();
 var aiOpponentTask = new AiSeatController(Seat.Red).RunAsync(aiOpponentSession, aiOpponentLifetime.Token);
-var aiOpponentUpdates = new List<GameSessionUpdate>();
+var aiOpponentEvents = new List<GameEvent>();
 var aiOpponentEventOrder = new List<string>();
-await using var aiOpponentUpdateReader = aiOpponentSession.SubscribeUpdatesAsync().GetAsyncEnumerator();
+await using var aiOpponentEventReader = aiOpponentSession.SubscribeEventsAsync().GetAsyncEnumerator();
 
 var aiOpponentInitial = await aiOpponentSession.StartAsync();
-await AppendNextUpdatesAsync(aiOpponentUpdateReader, aiOpponentUpdates, aiOpponentEventOrder, 4, "AI-opponent start updates");
+await AppendNextEventsAsync(aiOpponentEventReader, aiOpponentEvents, aiOpponentEventOrder, 1, "AI-opponent start events");
 aiOpponentEventOrder.Clear();
 
 var aiOpponentBlueHand = aiOpponentInitial.Hands.Single(hand => hand.Seat == Seat.Blue);
 var playBeforeAi = GameCommandFactory.CreatePlayCardCommand(aiOpponentBlueHand.Cards[0], aiOpponentInitial.Board[8], "blue-before-ai");
 await aiOpponentSession.SendCommandAsync(playBeforeAi);
-await AppendNextUpdatesAsync(aiOpponentUpdateReader, aiOpponentUpdates, aiOpponentEventOrder, 6, "AI-opponent response updates");
+await AppendNextEventsAsync(aiOpponentEventReader, aiOpponentEvents, aiOpponentEventOrder, 4, "AI-opponent response events");
 var afterAiOpponentResponse = aiOpponentSession.CurrentSnapshot ?? throw new InvalidOperationException("AI response did not cache a snapshot.");
 
 Assert(afterAiOpponentResponse.ActiveSeat == Seat.Blue, "AI response advances the turn back to local Blue");
@@ -145,8 +147,8 @@ Assert(afterAiOpponentResponse.Board.Count(cell => cell.Card?.Owner == Seat.Red)
 Assert(afterAiOpponentResponse.Board[8].Card?.Owner == Seat.Blue, "human card remains on the selected slot");
 AssertSequence(
     aiOpponentEventOrder,
-    ["CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged", "CardPlayedEvent", "TurnChangedEvent", "SnapshotChanged"],
-    "AI responds after receiving the turn-change snapshot");
+    ["CardPlayedEvent", "TurnChangedEvent", "CardPlayedEvent", "TurnChangedEvent"],
+    "AI responds after receiving the turn-change event snapshot");
 await StopControllerAsync(aiOpponentLifetime, aiOpponentTask);
 
 var selectedHands = new Dictionary<Seat, IReadOnlyList<int>>
@@ -193,18 +195,11 @@ static string FindRepoRoot()
         ?? throw new InvalidOperationException("Could not locate repository root.");
 }
 
-static string DescribeUpdate(GameSessionUpdate update) =>
-    update switch
-    {
-        GameSessionConnectionStateUpdate connection => $"ConnectionState:{connection.State}",
-        GameSessionEventUpdate gameEvent => gameEvent.GameEvent.GetType().Name,
-        GameSessionSnapshotUpdate => "SnapshotChanged",
-        _ => update.GetType().Name,
-    };
+static string DescribeEvent(GameEvent gameEvent) => gameEvent.GetType().Name;
 
-static async ValueTask AppendNextUpdatesAsync(
-    IAsyncEnumerator<GameSessionUpdate> reader,
-    List<GameSessionUpdate> updates,
+static async ValueTask AppendNextEventsAsync(
+    IAsyncEnumerator<GameEvent> reader,
+    List<GameEvent> events,
     List<string> eventOrder,
     int count,
     string message)
@@ -217,11 +212,19 @@ static async ValueTask AppendNextUpdatesAsync(
             throw new InvalidOperationException($"Assertion failed: timed out waiting for {message}.");
 
         if (!await moveNextTask)
-            throw new InvalidOperationException($"Assertion failed: update stream ended while waiting for {message}.");
+            throw new InvalidOperationException($"Assertion failed: event stream ended while waiting for {message}.");
 
-        updates.Add(reader.Current);
-        eventOrder.Add(DescribeUpdate(reader.Current));
+        AssertValidGameEvent(reader.Current);
+        events.Add(reader.Current);
+        eventOrder.Add(DescribeEvent(reader.Current));
     }
+}
+
+static void AssertValidGameEvent(GameEvent gameEvent)
+{
+    Assert(gameEvent.Sequence > 0, $"{gameEvent.GetType().Name} has a positive sequence");
+    Assert(gameEvent.Snapshot is not null, $"{gameEvent.GetType().Name} carries a snapshot");
+    Assert(!string.IsNullOrWhiteSpace(gameEvent.Type), $"{gameEvent.GetType().Name} carries a type tag");
 }
 
 static async ValueTask StopControllerAsync(
@@ -240,8 +243,10 @@ static async ValueTask StopControllerAsync(
 static async ValueTask AssertInMemoryTransportAsync()
 {
     var (first, second) = InMemoryMatchTransport.CreatePair();
-    var firstReady = new LobbyReadyChangeRequestedNetworkMessage(true);
-    var secondReady = new LobbyReadyChangeRequestedNetworkMessage(false);
+    var firstReady = NetworkMessage.Create(new LobbyReadyChangeRequested(true));
+    var secondReady = NetworkMessage.Create(new LobbyReadyChangeRequested(false));
+    Assert(firstReady.Type == NetworkMessageTypes.LobbyReadyChangeRequested, "ready request uses the ready-request network tag");
+    Assert(secondReady.Type == NetworkMessageTypes.LobbyReadyChangeRequested, "second ready request uses the ready-request network tag");
 
     await first.SendAsync(firstReady);
     await first.SendAsync(secondReady);
@@ -254,12 +259,16 @@ static async ValueTask AssertInMemoryTransportAsync()
         ReferenceEquals(secondReady, await ReadNextNetworkMessageAsync(secondReader, "second transport message")),
         "paired transports deliver the second typed message in order");
 
-    await second.SendAsync(new LobbyJoinRequestedNetworkMessage("Guest"));
+    await second.SendAsync(NetworkMessage.Create(new LobbyJoinRequested("Guest")));
 
     await using var firstReader = first.ReadMessagesAsync().GetAsyncEnumerator();
     Assert(
-        await ReadNextNetworkMessageAsync(firstReader, "return transport message") is LobbyJoinRequestedNetworkMessage { PlayerName: "Guest" },
-        "paired transports deliver messages in both directions");
+        await ReadNextNetworkMessageAsync(firstReader, "return transport message") is
+        {
+            Type: NetworkMessageTypes.LobbyJoinRequested,
+            Payload: LobbyJoinRequested { PlayerName: "Guest" },
+        },
+        "paired transports deliver tagged payloads in both directions");
 
     var (cancelledTransport, _) = InMemoryMatchTransport.CreatePair();
     using var cancellation = new CancellationTokenSource();
@@ -381,13 +390,14 @@ static async ValueTask AssertLobbyFlowAsync()
     AssertSetupSelection(hostSetup, Seat.Blue, hostSelection, "match setup includes host selected cards");
     AssertSetupSelection(hostSetup, Seat.Red, clientSelection, "match setup includes client selected cards");
 
-    await clientTransport.SendAsync(new GameCommandNetworkMessage(new PlayCardCommand("future-card", 0, "future-handoff")));
+    await clientTransport.SendAsync(NetworkMessage.Create(new PlayCardCommand("future-card", 0, "future-handoff")));
 
     await using var handoffReader = hostTransport.ReadMessagesAsync().GetAsyncEnumerator();
     Assert(
-        await ReadNextNetworkMessageAsync(handoffReader, "post-lobby handoff message") is GameCommandNetworkMessage
+        await ReadNextNetworkMessageAsync(handoffReader, "post-lobby handoff message") is
         {
-            Command: PlayCardCommand { ClientRequestId: "future-handoff" },
+            Type: NetworkMessageTypes.GameCommand,
+            Payload: PlayCardCommand { ClientRequestId: "future-handoff" },
         },
         "lobby stops reading after match start and leaves the transport usable");
 }

@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://1ej7h73ewtse"]
 
-[ext_resource type="Script" path="res://src/Ui/game_scene.gd" id="1_game_scene"]
-[ext_resource type="Script" path="res://src/Bridge/GameSessionBridge.cs" id="2_bridge"]
+[ext_resource type="Script" uid="uid://tovcofge7u4v" path="res://src/Ui/game_scene.gd" id="1_game_scene"]
+[ext_resource type="Script" uid="uid://bwy3mh6aqwijv" path="res://src/Bridge/GameSessionBridge.cs" id="2_bridge"]
 
-[node name="GameScene" type="Control"]
+[node name="GameScene" type="Control" unique_id=820358458]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,5 +12,5 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_game_scene")
 
-[node name="GameSessionBridge" type="Node" parent="."]
+[node name="GameSessionBridge" type="Node" parent="." unique_id=1682267624]
 script = ExtResource("2_bridge")

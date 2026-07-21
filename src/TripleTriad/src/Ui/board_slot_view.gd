@@ -5,7 +5,7 @@ const CardViewScene := preload("res://scenes/CardView.tscn")
 
 var atlas: Texture2D
 var slot_index := 0
-var snapshot: Dictionary = {}
+var snapshot = null
 var card_view: Control
 var drop_preview := false
 
@@ -22,11 +22,11 @@ func initialize(new_slot_index: int, new_atlas: Texture2D) -> void:
 	queue_redraw()
 
 
-func bind(cell_data: Dictionary, new_atlas: Texture2D) -> void:
-	snapshot = cell_data.duplicate(true)
+func bind(cell_data, new_atlas: Texture2D) -> void:
+	snapshot = cell_data
 	atlas = new_atlas
 
-	if not bool(snapshot.get("has_card", false)):
+	if snapshot == null or snapshot.Card == null:
 		if card_view != null:
 			remove_child(card_view)
 			card_view.queue_free()
@@ -37,21 +37,14 @@ func bind(cell_data: Dictionary, new_atlas: Texture2D) -> void:
 			add_child(card_view)
 
 		card_view.setup(atlas)
-		card_view.bind(snapshot.get("card", {}), false)
+		card_view.bind(snapshot.Card, false)
 		card_view.set_layout_position(Vector2.ZERO, 10)
 		card_view.set_drag_visual_preview(false)
 
 	queue_redraw()
 
 
-func preview_card(card_data: Dictionary, new_atlas: Texture2D) -> void:
-	snapshot = {
-		"index": slot_index,
-		"element": "None",
-		"can_drop": false,
-		"has_card": true,
-		"card": card_data.duplicate(true),
-	}
+func preview_card(card_data, new_atlas: Texture2D) -> void:
 	atlas = new_atlas
 
 	if card_view == null:
@@ -59,7 +52,7 @@ func preview_card(card_data: Dictionary, new_atlas: Texture2D) -> void:
 		add_child(card_view)
 
 	card_view.setup(atlas)
-	card_view.bind(snapshot["card"], false)
+	card_view.bind(card_data, false)
 	card_view.set_layout_position(Vector2.ZERO, 10)
 	card_view.set_drag_visual_preview(false)
 	queue_redraw()
@@ -72,8 +65,8 @@ func clear_card_visual() -> void:
 	remove_child(card_view)
 	card_view.queue_free()
 	card_view = null
-	snapshot["has_card"] = false
-	snapshot.erase("card")
+	if snapshot != null:
+		snapshot.Card = null
 	queue_redraw()
 
 
@@ -82,10 +75,10 @@ func get_card_view() -> Control:
 
 
 func can_drop() -> bool:
-	return bool(snapshot.get("can_drop", false)) and not bool(snapshot.get("has_card", false))
+	return snapshot != null and bool(snapshot.CanDrop) and snapshot.Card == null
 
 
-func get_snapshot() -> Dictionary:
+func get_snapshot():
 	return snapshot
 
 

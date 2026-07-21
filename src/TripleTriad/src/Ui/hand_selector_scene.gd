@@ -19,8 +19,8 @@ var full_preview: Control
 func _ready() -> void:
     atlas = load("res://assets/triple_triad/spritesheet.png")
 
-    var snapshot: Dictionary = GameFlowBridge.get_lobby_snapshot()
-    if snapshot.is_empty() or not bool(snapshot.get("can_select_cards", false)):
+    var snapshot = GameFlowBridge.get_lobby_snapshot()
+    if snapshot == null or not bool(snapshot.CanSelectCards):
         get_tree().call_deferred("change_scene_to_file", LOBBY_SCENE)
         return
 
@@ -30,12 +30,11 @@ func _ready() -> void:
     _refresh_selection_state()
 
 
-func _read_initial_selection(snapshot: Dictionary) -> void:
+func _read_initial_selection(snapshot) -> void:
     selected_numbers.clear()
-    var selected_cards: Array = snapshot.get("selected_cards", [])
+    var selected_cards: Array = snapshot.SelectedCards
     for card in selected_cards:
-        var card_data: Dictionary = card
-        var number := int(card_data.get("number", 0))
+        var number := int(card.CardNumber)
         if number > 0 and not selected_numbers.has(number):
             selected_numbers.append(number)
 
@@ -115,8 +114,8 @@ func _populate_cards() -> void:
     card_buttons.clear()
     var catalog: Array = GameFlowBridge.get_lobby_card_catalog()
     for card in catalog:
-        var card_data: Dictionary = card
-        var number := int(card_data.get("number", 0))
+        var card_data = card
+        var number := int(card_data.CardNumber)
         if number <= 0:
             continue
 
@@ -124,7 +123,7 @@ func _populate_cards() -> void:
         button.custom_minimum_size = CELL_SIZE
         button.focus_mode = Control.FOCUS_NONE
         button.clip_contents = true
-        button.tooltip_text = str(card_data.get("name", ""))
+        button.tooltip_text = str(card_data.Name)
         button.pressed.connect(_on_card_pressed.bind(number))
         button.mouse_entered.connect(_show_full_preview.bind(card_data, button))
         button.mouse_exited.connect(_hide_full_preview)
@@ -155,8 +154,8 @@ func _on_randomize_pressed() -> void:
     selected_numbers.clear()
 
     for i in min(MAX_SELECTION, catalog.size()):
-        var card_data: Dictionary = catalog[i]
-        selected_numbers.append(int(card_data.get("number", 0)))
+        var card_data = catalog[i]
+        selected_numbers.append(int(card_data.CardNumber))
 
     _refresh_selection_state()
 
@@ -212,7 +211,7 @@ func _card_style(selected: bool, hover: bool) -> StyleBoxFlat:
     return style
 
 
-func _show_full_preview(card: Dictionary, anchor: Control) -> void:
+func _show_full_preview(card, anchor: Control) -> void:
     _hide_full_preview()
 
     var preview := CardViewScene.instantiate()
@@ -222,8 +221,8 @@ func _show_full_preview(card: Dictionary, anchor: Control) -> void:
     add_child(full_preview)
 
     preview.setup(atlas)
-    var card_data := card.duplicate(true)
-    card_data["playable"] = false
+    var card_data = card.duplicate(true)
+    card_data.IsPlayable = false
     preview.bind(card_data, false)
     preview.position = _full_preview_position(anchor)
 

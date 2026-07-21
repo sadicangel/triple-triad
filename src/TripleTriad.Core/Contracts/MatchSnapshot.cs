@@ -1,4 +1,4 @@
-using TripleTriad.Data;
+﻿using TripleTriad.Data;
 
 namespace TripleTriad.Contracts;
 

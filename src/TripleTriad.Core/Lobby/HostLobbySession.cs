@@ -54,7 +54,7 @@ public sealed class HostLobbySession : ILobbySession
 
         _rules = rules;
         await PublishAndBroadcastSnapshotAsync(cancellationToken);
-        await _transport.SendAsync(new LobbyRulesChangedNetworkMessage(_rules), cancellationToken);
+        await _transport.SendAsync(NetworkMessage.Create(new LobbyRulesChanged(_rules)), cancellationToken);
         await TryStartMatchAsync(cancellationToken);
     }
 
@@ -86,7 +86,7 @@ public sealed class HostLobbySession : ILobbySession
         _players[Seat.Blue] = player with { IsReady = isReady };
 
         await PublishAndBroadcastSnapshotAsync(cancellationToken);
-        await _transport.SendAsync(new LobbyReadyChangedNetworkMessage(Seat.Blue, isReady), cancellationToken);
+        await _transport.SendAsync(NetworkMessage.Create(new LobbyReadyChanged(Seat.Blue, isReady)), cancellationToken);
         await TryStartMatchAsync(cancellationToken);
     }
 
@@ -129,13 +129,13 @@ public sealed class HostLobbySession : ILobbySession
 
     private async ValueTask HandleMessageAsync(NetworkMessage message, CancellationToken cancellationToken)
     {
-        switch (message)
+        switch (message.Payload)
         {
-            case LobbyJoinRequestedNetworkMessage join:
+            case LobbyJoinRequested join:
                 _players[Seat.Red] = CreatePlayer(Seat.Red, join.PlayerName, isReady: false);
                 await PublishAndBroadcastSnapshotAsync(cancellationToken);
                 break;
-            case LobbyReadyChangeRequestedNetworkMessage ready:
+            case LobbyReadyChangeRequested ready:
                 if (!_players.ContainsKey(Seat.Red))
                     _players[Seat.Red] = CreatePlayer(Seat.Red, "Guest", isReady: false);
 
@@ -143,17 +143,17 @@ public sealed class HostLobbySession : ILobbySession
                 _players[Seat.Red] = player with { IsReady = ready.IsReady };
 
                 await PublishAndBroadcastSnapshotAsync(cancellationToken);
-                await _transport.SendAsync(new LobbyReadyChangedNetworkMessage(Seat.Red, ready.IsReady), cancellationToken);
+                await _transport.SendAsync(NetworkMessage.Create(new LobbyReadyChanged(Seat.Red, ready.IsReady)), cancellationToken);
                 await TryStartMatchAsync(cancellationToken);
                 break;
-            case LobbyCardSelectionChangeRequestedNetworkMessage selection:
+            case LobbyCardSelectionChangeRequested selection:
                 if (!_players.ContainsKey(Seat.Red))
                     _players[Seat.Red] = CreatePlayer(Seat.Red, "Guest", isReady: false);
 
                 _cardSelections[Seat.Red] = LobbyCardSelectionRules.Validate(selection.CardNumbers);
                 await PublishAndBroadcastSnapshotAsync(cancellationToken);
                 break;
-            case LobbyRulesChangeRequestedNetworkMessage:
+            case LobbyRulesChangeRequested:
                 break;
         }
     }
@@ -166,7 +166,7 @@ public sealed class HostLobbySession : ILobbySession
             return;
 
         await _transport.SendAsync(
-            new LobbySnapshotNetworkMessage(CreateSnapshot(Seat.Red)),
+            NetworkMessage.Create(CreateSnapshot(Seat.Red)),
             cancellationToken);
     }
 
@@ -181,9 +181,9 @@ public sealed class HostLobbySession : ILobbySession
 
         PublishUpdate(new LobbySnapshotUpdate(NextSequence(), CurrentSnapshot));
         await _transport.SendAsync(
-            new LobbySnapshotNetworkMessage(CreateSnapshot(Seat.Red, isMatchStarting: true)),
+            NetworkMessage.Create(CreateSnapshot(Seat.Red, isMatchStarting: true)),
             cancellationToken);
-        await _transport.SendAsync(new MatchStartedNetworkMessage(setup), cancellationToken);
+        await _transport.SendAsync(NetworkMessage.Create(setup), cancellationToken);
 
         PublishUpdate(new LobbyMatchStartedUpdate(NextSequence(), setup));
         _matchStarted.TrySetResult(setup);

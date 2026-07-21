@@ -1,297 +1,176 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Godot;
 using TripleTriad.Contracts;
 using TripleTriad.Data;
 using TripleTriad.Sessions;
-using GodotArray = Godot.Collections.Array;
-using GodotDictionary = Godot.Collections.Dictionary;
 
 namespace TripleTriad.Bridge;
 
 public partial class GameSessionBridge : Node
 {
-    private readonly ConcurrentQueue<GameSessionUpdate> _pendingUpdates = new();
-    private readonly CancellationTokenSource _sessionLifetime = new();
-    private bool _isExiting;
-    private IGameSession _session = null!;
+	private readonly ConcurrentQueue<GameEvent> _pendingEvents = new();
+	private readonly ConcurrentQueue<ConnectionStateChange> _pendingConnectionStates = new();
+	private readonly CancellationTokenSource _sessionLifetime = new();
+	private bool _isExiting;
+	private long _nextConnectionSequence;
+	private IGameSession _session = null!;
 
-    [Signal] public delegate void snapshot_changedEventHandler(GodotDictionary snapshot);
+	[Signal] public delegate void game_event_raisedEventHandler(GameEventResource gameEvent);
 
-    [Signal] public delegate void game_event_raisedEventHandler(GodotDictionary gameEvent);
+	[Signal] public delegate void connection_state_changedEventHandler(ConnectionStateResource connectionState);
 
-    [Signal] public delegate void connection_state_changedEventHandler(GodotDictionary connectionState);
+	[Export] public bool RevealOpponentHand { get; set; } = true;
 
-    [Export] public bool RevealOpponentHand { get; set; } = true;
+	[Export] public bool AutoPlayOpponent { get; set; } = true;
 
-    [Export] public bool AutoPlayOpponent { get; set; } = true;
+	public MatchSnapshotResource? CurrentSnapshot { get; private set; }
 
-    public GodotDictionary CurrentSnapshot { get; private set; } = [];
+	public override async void _Ready()
+	{
+		var catalog = CardCatalog.Load(ProjectSettings.GlobalizePath("res://assets/triple_triad/cards.json"));
+		var flow = GetNodeOrNull<GameFlowBridge>("/root/GameFlowBridge");
+		_session = flow?.GetActiveGameSession()
+			?? CreateFallbackSession(catalog);
+		_ = PumpSessionEventsAsync(_sessionLifetime.Token);
 
-    public override async void _Ready()
-    {
-        var catalog = CardCatalog.Load(ProjectSettings.GlobalizePath("res://assets/triple_triad/cards.json"));
-        var flow = GetNodeOrNull<GameFlowBridge>("/root/GameFlowBridge");
-        _session = flow?.GetActiveGameSession()
-            ?? CreateFallbackSession(catalog);
-        _ = PumpSessionUpdatesAsync(_sessionLifetime.Token);
+		try
+		{
+			EnqueueConnectionState(SessionConnectionState.Connecting);
+			var snapshot = await _session.StartAsync(_sessionLifetime.Token);
+			CurrentSnapshot ??= MatchSnapshotResource.FromModel(snapshot);
+			EnqueueConnectionState(_session.ConnectionState);
+		}
+		catch (OperationCanceledException) when (_sessionLifetime.IsCancellationRequested) { }
+		catch (Exception ex)
+		{
+			EnqueueConnectionState(SessionConnectionState.Failed, ex.Message);
+		}
+	}
 
-        try
-        {
-            var snapshot = await _session.StartAsync(_sessionLifetime.Token);
-            if (CurrentSnapshot.Count == 0)
-                CurrentSnapshot = Serialize(snapshot);
-        }
-        catch (OperationCanceledException) when (_sessionLifetime.IsCancellationRequested) { }
-        catch (Exception ex)
-        {
-            EnqueueSessionUpdate(new GameSessionConnectionStateUpdate(0, SessionConnectionState.Failed, ex.Message));
-        }
-    }
+	public override void _ExitTree()
+	{
+		_isExiting = true;
+		_sessionLifetime.Cancel();
 
-    public override void _ExitTree()
-    {
-        _isExiting = true;
-        _sessionLifetime.Cancel();
+		_sessionLifetime.Dispose();
+	}
 
-        _sessionLifetime.Dispose();
-    }
+	public MatchSnapshotResource? get_current_snapshot() => CurrentSnapshot;
 
-    public GodotDictionary get_current_snapshot() => CurrentSnapshot;
+	public void submit_play_card(string cardInstanceId, int boardSlotIndex, string clientRequestId)
+	{
+		if (_session is null)
+			return;
 
-    public void submit_play_card(string cardInstanceId, int boardSlotIndex, string clientRequestId)
-    {
-        if (_session is null)
-            return;
+		_ = SendPlayCardAsync(cardInstanceId, boardSlotIndex, clientRequestId);
+	}
 
-        _ = SendPlayCardAsync(cardInstanceId, boardSlotIndex, clientRequestId);
-    }
+	private async Task SendPlayCardAsync(string cardInstanceId, int boardSlotIndex, string clientRequestId)
+	{
+		try
+		{
+			await _session.SendCommandAsync(
+				new PlayCardCommand(
+					cardInstanceId,
+					boardSlotIndex,
+					clientRequestId),
+				_sessionLifetime.Token);
+		}
+		catch (OperationCanceledException) when (_sessionLifetime.IsCancellationRequested) { }
+		catch (Exception ex)
+		{
+			EnqueueConnectionState(SessionConnectionState.Failed, ex.Message);
+		}
+	}
 
-    private async Task SendPlayCardAsync(string cardInstanceId, int boardSlotIndex, string clientRequestId)
-    {
-        try
-        {
-            await _session.SendCommandAsync(
-                new PlayCardCommand(
-                    cardInstanceId,
-                    boardSlotIndex,
-                    clientRequestId),
-                _sessionLifetime.Token);
-        }
-        catch (OperationCanceledException) when (_sessionLifetime.IsCancellationRequested) { }
-        catch (Exception ex)
-        {
-            EnqueueSessionUpdate(new GameSessionConnectionStateUpdate(0, SessionConnectionState.Failed, ex.Message));
-        }
-    }
+	private async Task PumpSessionEventsAsync(CancellationToken cancellationToken)
+	{
+		try
+		{
+			await foreach (var gameEvent in _session.SubscribeEventsAsync(cancellationToken))
+				EnqueueSessionEvent(gameEvent);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (Exception ex)
+		{
+			EnqueueConnectionState(SessionConnectionState.Failed, ex.Message);
+		}
+	}
 
-    private async Task PumpSessionUpdatesAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await foreach (var update in _session.SubscribeUpdatesAsync(cancellationToken))
-                EnqueueSessionUpdate(update);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception ex)
-        {
-            EnqueueSessionUpdate(new GameSessionConnectionStateUpdate(0, SessionConnectionState.Failed, ex.Message));
-        }
-    }
+	private void EnqueueSessionEvent(GameEvent gameEvent)
+	{
+		if (_isExiting)
+			return;
 
-    private void EnqueueSessionUpdate(GameSessionUpdate update)
-    {
-        if (_isExiting)
-            return;
+		_pendingEvents.Enqueue(gameEvent);
+		CallDeferred(nameof(DrainSessionEvents));
+	}
 
-        _pendingUpdates.Enqueue(update);
+	public void DrainSessionEvents()
+	{
+		while (_pendingEvents.TryDequeue(out var gameEvent))
+			ApplySessionEvent(gameEvent);
+	}
 
-        CallDeferred(nameof(DrainSessionUpdates));
-    }
+	private void ApplySessionEvent(GameEvent gameEvent)
+	{
+		var resource = GameEventResource.FromModel(gameEvent);
+		CurrentSnapshot = resource.Snapshot ?? MatchSnapshotResource.FromModel(gameEvent.Snapshot);
+		resource.Snapshot ??= CurrentSnapshot;
+		EmitSignal(SignalName.game_event_raised, resource);
+	}
 
-    public void DrainSessionUpdates()
-    {
-        while (_pendingUpdates.TryDequeue(out var update))
-            ApplySessionUpdate(update);
-    }
+	private void EnqueueConnectionState(SessionConnectionState state, string? reason = null)
+	{
+		if (_isExiting)
+			return;
 
-    private void ApplySessionUpdate(GameSessionUpdate update)
-    {
-        switch (update)
-        {
-            case GameSessionSnapshotUpdate snapshotUpdate:
-                CurrentSnapshot = Serialize(snapshotUpdate.Snapshot);
-                CurrentSnapshot["sequence"] = snapshotUpdate.Sequence;
-                EmitSignal(SignalName.snapshot_changed, CurrentSnapshot);
-                break;
-            case GameSessionEventUpdate eventUpdate:
-                var serializedEvent = Serialize(eventUpdate.GameEvent);
-                serializedEvent["sequence"] = eventUpdate.Sequence;
-                EmitSignal(SignalName.game_event_raised, serializedEvent);
-                break;
-            case GameSessionConnectionStateUpdate stateUpdate:
-                EmitConnectionState(stateUpdate.State, stateUpdate.Reason, stateUpdate.Sequence);
-                break;
-        }
-    }
+		_pendingConnectionStates.Enqueue(new ConnectionStateChange(state, reason));
+		CallDeferred(nameof(DrainConnectionStates));
+	}
 
-    private void EmitConnectionState(SessionConnectionState state, string? reason, long sequence)
-    {
-        var serialized = new GodotDictionary
-        {
-            ["state"] = state.ToString(),
-            ["reason"] = reason ?? string.Empty,
-            ["sequence"] = sequence,
-        };
+	public void DrainConnectionStates()
+	{
+		while (_pendingConnectionStates.TryDequeue(out var change))
+			EmitConnectionState(change.State, change.Reason);
+	}
 
-        EmitSignal(SignalName.connection_state_changed, serialized);
-    }
+	private void EmitConnectionState(SessionConnectionState state, string? reason)
+	{
+		var resource = new ConnectionStateResource
+		{
+			State = state.ToString(),
+			Reason = reason ?? string.Empty,
+			Sequence = ++_nextConnectionSequence,
+		};
 
-    private static GodotDictionary Serialize(MatchSnapshot snapshot)
-    {
-        var board = new GodotArray();
-        foreach (var cell in snapshot.Board)
-            board.Add(Serialize(cell));
+		EmitSignal(SignalName.connection_state_changed, resource);
+	}
 
-        var hands = new GodotArray();
-        foreach (var hand in snapshot.Hands)
-            hands.Add(Serialize(hand));
+	private IGameSession CreateFallbackSession(CardCatalog catalog)
+	{
+		var session = new LocalGameSession(catalog, Seat.Blue, RevealOpponentHand);
+		if (AutoPlayOpponent)
+			_ = RunSeatControllerAsync(new AiSeatController(Seat.Red), session, _sessionLifetime.Token);
 
-        var rules = new GodotArray();
-        foreach (var rule in snapshot.Rules.ToDisplayNames())
-            rules.Add(rule);
+		return session;
+	}
 
-        return new GodotDictionary
-        {
-            ["active_seat"] = snapshot.ActiveSeat.ToString(),
-            ["local_seat"] = snapshot.LocalSeat.ToString(),
-            ["rules"] = rules,
-            ["blue_score"] = snapshot.BlueScore,
-            ["red_score"] = snapshot.RedScore,
-            ["board"] = board,
-            ["hands"] = hands,
-            ["is_complete"] = snapshot.IsComplete,
-        };
-    }
+	private async Task RunSeatControllerAsync(
+		ISeatController controller,
+		IGameSession session,
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await controller.RunAsync(session, cancellationToken);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (Exception ex)
+		{
+			EnqueueConnectionState(SessionConnectionState.Failed, ex.Message);
+		}
+	}
 
-    private static GodotDictionary Serialize(BoardCellSnapshot cell)
-    {
-        var serialized = new GodotDictionary
-        {
-            ["index"] = cell.Index,
-            ["element"] = cell.Element.ToString(),
-            ["can_drop"] = cell.CanDrop,
-            ["has_card"] = cell.Card is not null,
-        };
-
-        if (cell.Card is not null)
-            serialized["card"] = Serialize(cell.Card);
-
-        return serialized;
-    }
-
-    private static GodotDictionary Serialize(HandSnapshot hand)
-    {
-        var cards = new GodotArray();
-        foreach (var card in hand.Cards)
-            cards.Add(Serialize(card));
-
-        return new GodotDictionary
-        {
-            ["seat"] = hand.Seat.ToString(),
-            ["is_local"] = hand.IsLocal,
-            ["is_revealed"] = hand.IsRevealed,
-            ["cards"] = cards,
-        };
-    }
-
-    private static GodotDictionary Serialize(CardSnapshot card) =>
-        new()
-        {
-            ["id"] = card.CardInstanceId,
-            ["number"] = card.CardNumber,
-            ["name"] = card.Name,
-            ["element"] = card.Element.ToString(),
-            ["owner"] = card.Owner.ToString(),
-            ["face_up"] = card.IsFaceUp,
-            ["playable"] = card.IsPlayable,
-            ["w"] = card.Ranks.West,
-            ["n"] = card.Ranks.North,
-            ["e"] = card.Ranks.East,
-            ["s"] = card.Ranks.South,
-        };
-
-    private static GodotDictionary Serialize(GameEvent gameEvent)
-    {
-        var serialized = new GodotDictionary
-        {
-            ["client_request_id"] = gameEvent.ClientRequestId ?? string.Empty,
-        };
-
-        switch (gameEvent)
-        {
-            case MatchStartedEvent started:
-                serialized["type"] = "match_started";
-                serialized["starting_seat"] = started.StartingSeat.ToString();
-                serialized["snapshot"] = Serialize(started.Snapshot);
-                break;
-            case CardPlayedEvent played:
-                serialized["type"] = "card_played";
-                serialized["card_id"] = played.CardInstanceId;
-                serialized["card"] = Serialize(played.Card);
-                serialized["source_seat"] = played.SourceSeat.ToString();
-                serialized["source_hand_index"] = played.SourceHandIndex;
-                serialized["board_slot_index"] = played.BoardSlotIndex;
-                serialized["seat"] = played.Seat.ToString();
-                break;
-            case CardCapturedEvent captured:
-                serialized["type"] = "card_captured";
-                serialized["card_id"] = captured.CardInstanceId;
-                serialized["card"] = Serialize(captured.Card);
-                serialized["board_slot_index"] = captured.BoardSlotIndex;
-                serialized["previous_owner"] = captured.PreviousOwner.ToString();
-                serialized["new_owner"] = captured.NewOwner.ToString();
-                break;
-            case TurnChangedEvent turnChanged:
-                serialized["type"] = "turn_changed";
-                serialized["active_seat"] = turnChanged.ActiveSeat.ToString();
-                break;
-            case MoveRejectedEvent rejected:
-                serialized["type"] = "move_rejected";
-                serialized["reason"] = rejected.Reason;
-                serialized["card_id"] = rejected.CardInstanceId ?? string.Empty;
-                serialized["board_slot_index"] = rejected.BoardSlotIndex ?? -1;
-                break;
-            case MatchEndedEvent ended:
-                serialized["type"] = "match_ended";
-                serialized["winner"] = ended.Winner?.ToString() ?? string.Empty;
-                break;
-        }
-
-        return serialized;
-    }
-
-    private IGameSession CreateFallbackSession(CardCatalog catalog)
-    {
-        var session = new LocalGameSession(catalog, Seat.Blue, RevealOpponentHand);
-        if (AutoPlayOpponent)
-            _ = RunSeatControllerAsync(new AiSeatController(Seat.Red), session, _sessionLifetime.Token);
-
-        return session;
-    }
-
-    private async Task RunSeatControllerAsync(
-        ISeatController controller,
-        IGameSession session,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await controller.RunAsync(session, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception ex)
-        {
-            EnqueueSessionUpdate(new GameSessionConnectionStateUpdate(0, SessionConnectionState.Failed, ex.Message));
-        }
-    }
+	private readonly record struct ConnectionStateChange(SessionConnectionState State, string? Reason);
 }

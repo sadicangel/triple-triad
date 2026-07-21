@@ -1,12 +1,12 @@
 extends Control
 class_name TriadCardView
 
-signal drag_requested(card: Dictionary, source_view: Control)
+signal drag_requested(card, source_view: Control)
 
 const CARD_SIZE := Vector2(256, 256)
 
 var atlas: Texture2D
-var card: Dictionary = {}
+var card = null
 var hover_lift_enabled := false
 var is_drag_preview := false
 var is_drag_placeholder := false
@@ -36,8 +36,8 @@ func setup(new_atlas: Texture2D) -> void:
     queue_redraw()
 
 
-func bind(card_data: Dictionary, enable_hover_lift: bool) -> void:
-    card = card_data.duplicate(true)
+func bind(card_data, enable_hover_lift: bool) -> void:
+    card = card_data.duplicate(true) if card_data is Dictionary else card_data
     hover_lift_enabled = enable_hover_lift
     _update_mouse_filter()
     tooltip_text = _tooltip_text()
@@ -45,11 +45,11 @@ func bind(card_data: Dictionary, enable_hover_lift: bool) -> void:
 
 
 func set_card_owner(owner: String) -> void:
-    if card.is_empty():
+    if not _has_card():
         return
 
-    card["owner"] = owner
-    card["face_up"] = true
+    _set_card_value("Owner", "owner", _owner_value(owner))
+    _set_card_value("IsFaceUp", "face_up", true)
     queue_redraw()
 
 
@@ -79,7 +79,7 @@ func set_drag_placeholder(enabled: bool) -> void:
 
 
 func animate_owner_flip(previous_owner: String, new_owner: String, flip_sign: float) -> void:
-    if card.is_empty():
+    if not _has_card():
         return
 
     set_card_owner(previous_owner)
@@ -117,7 +117,7 @@ func animate_owner_flip(previous_owner: String, new_owner: String, flip_sign: fl
 
 
 func _gui_input(event: InputEvent) -> void:
-    if card.is_empty() or not bool(card.get("playable", false)) or is_drag_preview or is_drag_placeholder:
+    if not _has_card() or not bool(_card_value("IsPlayable", "playable", false)) or is_drag_preview or is_drag_placeholder:
         return
 
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -126,29 +126,29 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
-    if atlas == null or card.is_empty():
+    if atlas == null or not _has_card():
         return
 
     if is_drag_placeholder:
         _draw_placeholder()
         return
 
-    if not bool(card.get("face_up", false)):
+    if not bool(_card_value("IsFaceUp", "face_up", false)):
         _draw_tile(TriadAtlasRegions.fill(0), Color.WHITE)
         return
 
-    _draw_tile(TriadAtlasRegions.fill(1), TriadCardPalette.for_seat(str(card.get("owner", "Blue"))))
-    _draw_tile(TriadAtlasRegions.card_face(int(card.get("number", 1))), Color.WHITE)
-    _draw_tile(TriadAtlasRegions.value("west", int(card.get("w", 0))), Color.WHITE)
-    _draw_tile(TriadAtlasRegions.value("north", int(card.get("n", 0))), Color.WHITE)
-    _draw_tile(TriadAtlasRegions.value("east", int(card.get("e", 0))), Color.WHITE)
-    _draw_tile(TriadAtlasRegions.value("south", int(card.get("s", 0))), Color.WHITE)
+    _draw_tile(TriadAtlasRegions.fill(1), TriadCardPalette.for_seat(_seat_name(_card_value("Owner", "owner", "Blue"))))
+    _draw_tile(TriadAtlasRegions.card_face(int(_card_value("CardNumber", "number", 1))), Color.WHITE)
+    _draw_tile(TriadAtlasRegions.value("west", int(_rank_value("West", "w"))), Color.WHITE)
+    _draw_tile(TriadAtlasRegions.value("north", int(_rank_value("North", "n"))), Color.WHITE)
+    _draw_tile(TriadAtlasRegions.value("east", int(_rank_value("East", "e"))), Color.WHITE)
+    _draw_tile(TriadAtlasRegions.value("south", int(_rank_value("South", "s"))), Color.WHITE)
 
-    var element_name := str(card.get("element", "None"))
+    var element_name := _element_name(_card_value("Element", "element", "None"))
     if element_name != "None":
         _draw_tile(TriadAtlasRegions.element(element_name), Color.WHITE)
 
-    if is_hovered and bool(card.get("playable", false)):
+    if is_hovered and bool(_card_value("IsPlayable", "playable", false)):
         _draw_tile(TriadAtlasRegions.fill(1), Color(1, 1, 1, 0.18))
 
 
@@ -157,7 +157,7 @@ func _draw_tile(region: Rect2, color: Color) -> void:
 
 
 func _draw_placeholder() -> void:
-    var owner_color := TriadCardPalette.for_seat(str(card.get("owner", "Blue")))
+    var owner_color := TriadCardPalette.for_seat(_seat_name(_card_value("Owner", "owner", "Blue")))
     var fill_color := owner_color.darkened(0.35)
     fill_color.a = 0.18
     var border_color := owner_color
@@ -172,7 +172,7 @@ func _draw_placeholder() -> void:
 
 
 func _on_mouse_entered() -> void:
-    if not bool(card.get("playable", false)) or not hover_lift_enabled or is_drag_preview or is_drag_placeholder:
+    if not bool(_card_value("IsPlayable", "playable", false)) or not hover_lift_enabled or is_drag_preview or is_drag_placeholder:
         return
 
     is_hovered = true
@@ -212,7 +212,7 @@ func _reset_hover_state() -> void:
 
 
 func _update_mouse_filter() -> void:
-    mouse_filter = Control.MOUSE_FILTER_STOP if not is_drag_preview and not is_drag_placeholder and bool(card.get("playable", false)) else Control.MOUSE_FILTER_IGNORE
+    mouse_filter = Control.MOUSE_FILTER_STOP if not is_drag_preview and not is_drag_placeholder and bool(_card_value("IsPlayable", "playable", false)) else Control.MOUSE_FILTER_IGNORE
 
 
 func _apply_display_size() -> void:
@@ -222,19 +222,108 @@ func _apply_display_size() -> void:
 
 
 func _tooltip_text() -> String:
-    if card.is_empty():
+    if not _has_card():
         return ""
-    if not bool(card.get("face_up", false)):
+    if not bool(_card_value("IsFaceUp", "face_up", false)):
         return "Hidden card"
 
     return "%s  W %s  N %s  E %s  S %s" % [
-        str(card.get("name", "")),
-        _rank(int(card.get("w", 0))),
-        _rank(int(card.get("n", 0))),
-        _rank(int(card.get("e", 0))),
-        _rank(int(card.get("s", 0))),
+        str(_card_value("Name", "name", "")),
+        _rank(int(_rank_value("West", "w"))),
+        _rank(int(_rank_value("North", "n"))),
+        _rank(int(_rank_value("East", "e"))),
+        _rank(int(_rank_value("South", "s"))),
     ]
 
 
 func _rank(rank: int) -> String:
     return "A" if rank == 10 else str(rank)
+
+
+func _has_card() -> bool:
+    return card != null and (not (card is Dictionary) or not card.is_empty())
+
+
+func _card_value(resource_property: String, dictionary_key: String, default_value):
+    if card == null:
+        return default_value
+    if card is Dictionary:
+        return card.get(dictionary_key, default_value)
+
+    match resource_property:
+        "CardInstanceId":
+            return card.CardInstanceId
+        "CardNumber":
+            return card.CardNumber
+        "Name":
+            return card.Name
+        "Element":
+            return card.Element
+        "Owner":
+            return card.Owner
+        "IsFaceUp":
+            return card.IsFaceUp
+        "IsPlayable":
+            return card.IsPlayable
+        _:
+            return default_value
+
+
+func _set_card_value(resource_property: String, dictionary_key: String, value) -> void:
+    if card == null:
+        return
+    if card is Dictionary:
+        card[dictionary_key] = value
+        return
+
+    match resource_property:
+        "Owner":
+            card.Owner = value
+        "IsFaceUp":
+            card.IsFaceUp = value
+        "IsPlayable":
+            card.IsPlayable = value
+
+
+func _rank_value(resource_property: String, dictionary_key: String) -> int:
+    if card is Dictionary:
+        return int(card.get(dictionary_key, 0))
+
+    var ranks = card.Ranks if card != null else null
+    if ranks == null:
+        return 0
+
+    match resource_property:
+        "West":
+            return int(ranks.West)
+        "North":
+            return int(ranks.North)
+        "East":
+            return int(ranks.East)
+        "South":
+            return int(ranks.South)
+        _:
+            return 0
+
+
+func _seat_name(value) -> String:
+    match str(value):
+        "0":
+            return "Red"
+        "1":
+            return "Blue"
+        _:
+            return str(value)
+
+
+func _owner_value(owner: String) -> int:
+    return 1 if owner == "Blue" else 0
+
+
+func _element_name(value) -> String:
+    var names := ["None", "Fire", "Ice", "Thunder", "Water", "Earth", "Wind", "Holy", "Dark", "Poison"]
+    var text := str(value)
+    if text.is_valid_int():
+        var index := int(text)
+        return names[index] if index >= 0 and index < names.size() else "None"
+    return text
